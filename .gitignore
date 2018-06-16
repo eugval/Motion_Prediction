@@ -1,0 +1,17 @@
+#Data and weights should not be uploaded
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.hdf5
+*.pickle
+*.h5
+
+.ipynb_checkpoints/
+
+
+
+.DS_Store
+Mask_RCNN/
+sort/
+.idea
