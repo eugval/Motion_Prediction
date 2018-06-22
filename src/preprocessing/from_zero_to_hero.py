@@ -8,7 +8,7 @@ from preprocessing.make_dataset import make_dataset
 from preprocessing.resize_data import resize_data
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1,2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 import os
