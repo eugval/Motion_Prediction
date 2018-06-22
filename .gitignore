@@ -7,7 +7,7 @@
 *.pickle
 *.h5
 
-#Compressed data files should not be uploaded 
+#Compressed data files should not be uploaded
 *.zip
 
 .ipynb_checkpoints/
