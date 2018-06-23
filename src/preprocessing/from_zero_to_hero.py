@@ -1,3 +1,10 @@
+import os
+import sys
+ROOT_DIR = os.path.abspath("../")
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+
 from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , generate_image_dir_path
 
 from preprocessing.tracking import discard_masks, track, consolidate_indices, visualise_tracks
@@ -8,7 +15,7 @@ from preprocessing.make_dataset import make_dataset
 from preprocessing.resize_data import resize_data
 import time
 
-import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 
