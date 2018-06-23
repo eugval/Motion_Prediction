@@ -6,6 +6,7 @@ from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussian
 
 from preprocessing.make_dataset import make_dataset
 from preprocessing.resize_data import resize_data
+import time
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
@@ -18,6 +19,8 @@ RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
 #names = ["Light1", "Light2", "Crossing1", "Crossing2"]
 names = ["30SLight1"]
+
+start_time = time.time()
 #Run the MaskRcnn
 for name in names:
     print("dealing with {} ...".format(name))
@@ -46,29 +49,45 @@ for name in names:
                   processed_dir,
                   generate_image_dir_path(raw_dir_name), save_images=True)
 
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
     print("Discarding Masks...")
     discard_masks(data_file,tracked_file, small_threshold = 20)
+
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Tracking...")
     track(tracked_file)
 
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
     print("Tracking reverse...")
     track(tracked_file, reverse=True)
+
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Consolidating...")
     consolidate_indices(tracked_file)
 
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
     print("Resizing...")
     resize_data(tracked_file, resized_file, 256, 314, maintain_ratio=True)
 
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
     print("Making gaussian masks...")
     make_gaussian_masks(resized_file)
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Making the dataset...")
     make_dataset(resized_file, dataset_file)
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Making Visualisation...")
     visualise_tracks(resized_file, target_folder_consolidated, id_idx = 0)
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Making Gaussian Visualisation...")
     visualise_gaussians(resized_file,target_folder_gauss)
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
