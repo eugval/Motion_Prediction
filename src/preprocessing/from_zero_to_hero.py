@@ -16,8 +16,8 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = ["Light1", "Light2", "Crossing1", "Crossing2"]
-
+#names = ["Light1", "Light2", "Crossing1", "Crossing2"]
+names = ["30SLight1"]
 #Run the MaskRcnn
 for name in names:
     print("dealing with {} ...".format(name))
