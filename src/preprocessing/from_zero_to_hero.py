@@ -19,7 +19,7 @@ from preprocessing.resize_data import resize_data
 import time
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 import os
