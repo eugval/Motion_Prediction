@@ -167,7 +167,7 @@ if __name__=="__main__":
 
 
     # The name of the directory to save the processed data
-    target_dir_name = "football1_sm5"
+    target_dir_name = "football1_sm6"
 
     #The name of the hdf5 file to save the data
     save_name = "{}.hdf5".format(target_dir_name)
