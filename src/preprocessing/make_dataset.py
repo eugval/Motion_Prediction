@@ -18,6 +18,7 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
     images = []
     masks = []
     delta_masks = []
+    centroids = []
 
     for j in range(number_inputs):
 
@@ -27,25 +28,32 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
 
         images.append(origin['image'].value)
 
+
         mask_idx = get_idx_from_id(id,f,frame_number)
         mask = origin['masks'].value[:,:,mask_idx]
+
         masks.append(mask)
         delta_masks.append(mask.astype(int) - masks[0].astype(int))
+        centroids.append(origin['centroids'].value[mask_idx, :])
 
     frame_number= i+int(future_time-1)
     mask_idx = get_idx_from_id(id,f,frame_number)
     gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
     future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,mask_idx]
+    future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[mask_idx,:]
 
     #images = np.dstack(images)
     images = np.stack(images, axis=3)
     masks = np.dstack(masks)
     delta_masks=np.dstack(delta_masks)
+    centroids = np.stack(centroids,axis = 0)
 
     f2.create_dataset('datapoint{}/images'.format(datapoint_index),data=images)
     f2.create_dataset('datapoint{}/masks'.format(datapoint_index),data=masks)
+    f2.create_dataset('datapoint{}/centroids'.format(datapoint_index), data=centroids)
     f2.create_dataset('datapoint{}/delta_masks'.format(datapoint_index),data=delta_masks)
     f2.create_dataset('datapoint{}/future_mask'.format(datapoint_index), data=future_mask)
+    f2.create_dataset('datapoint{}/future_centroid'.format(datapoint_index), data=future_centroid)
     f2.create_dataset('datapoint{}/gaussian_mask'.format(datapoint_index),data=gaussian_mask)
 
 
