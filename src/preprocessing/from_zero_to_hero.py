@@ -19,7 +19,7 @@ from preprocessing.resize_data import resize_data
 import time
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 import os
@@ -27,8 +27,8 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-#names = [("Light1",1), ("Light2",1), ("Crossing1",1), ("Crossing2",1),("Football1",2), ("Football2",2),("Football1_sm",2)  ]
-names = [("30SLight1",1)]
+names = [("Light1",1), ("Light2",1), ("Crossing1",1), ("Crossing2",1),("Football1",2), ("Football2",2),("Football1_sm",2)]
+#names = [("30SLight1",1)]
 
 start_time = time.time()
 #Run the MaskRcnn
