@@ -8,7 +8,7 @@ sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , generate_image_dir_path
 
 from preprocessing.tracking import  track, consolidate_indices, visualise_tracks
-from preprocessing.discard import  score_discard, class_and_size_discard
+from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
 
@@ -17,7 +17,7 @@ from preprocessing.resize_data import resize_data
 import time
 
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
 
 
 import os
