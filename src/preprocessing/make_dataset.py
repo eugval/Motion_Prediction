@@ -30,7 +30,7 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
         mask_idx = get_idx_from_id(id,f,frame_number)
         mask = origin['masks'].value[:,:,mask_idx]
         masks.append(mask)
-        delta_masks.append(mask-masks[0])
+        delta_masks.append(mask.astype(int) - masks[0].astype(int))
 
     frame_number= i+int(future_time-1)
     mask_idx = get_idx_from_id(id,f,frame_number)
