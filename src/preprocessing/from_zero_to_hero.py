@@ -4,6 +4,8 @@ ROOT_DIR = os.path.abspath("../")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+import matplotlib
+matplotlib.use('Agg')
 
 from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , generate_image_dir_path
 
