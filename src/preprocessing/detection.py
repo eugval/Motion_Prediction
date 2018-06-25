@@ -60,7 +60,7 @@ def generate_save_dir_path(target_dir):
 
 
 
-def create_model(gpu_num = 1, images_per_gpu = 1, detection_confidence = 0.5,):
+def create_model(gpu_num = 1, images_per_gpu = 1, detection_confidence = 0.5, detection_nms_threshold=0.3):
     '''
     Creates the Mask-RCNN model trained on COCO.
     :param gpu_num: The number of GPUs to use
@@ -73,6 +73,7 @@ def create_model(gpu_num = 1, images_per_gpu = 1, detection_confidence = 0.5,):
         GPU_COUNT = gpu_num
         IMAGES_PER_GPU = images_per_gpu
         DETECTION_MIN_CONFIDENCE = detection_confidence
+        DETECTION_NMS_THRESHOLD = detection_nms_threshold
 
     config = InferenceConfig()
     # Create model object in inference mode.
@@ -84,7 +85,7 @@ def create_model(gpu_num = 1, images_per_gpu = 1, detection_confidence = 0.5,):
     return model
 
 
-def run_mask_rcnn(save_name, target_dir, image_dir, model = None, one = False, display = False, save_images = False, detection_confidence= 0.5):
+def run_mask_rcnn(save_name, target_dir, image_dir, model = None, one = False, display = False, save_images = False, detection_confidence= 0.5, detection_nms_threshold=0.3):
     '''
 
     :param save_name: The name of the h5py data file to create.
@@ -110,7 +111,7 @@ def run_mask_rcnn(save_name, target_dir, image_dir, model = None, one = False, d
 
     #Build the model
     if(model == None):
-        model = create_model(detection_confidence= detection_confidence)
+        model = create_model(detection_confidence= detection_confidence, detection_nms_threshold=0.3)
 
     if(not one):
         save_path = os.path.join(target_dir,save_name)
@@ -142,7 +143,7 @@ def run_mask_rcnn(save_name, target_dir, image_dir, model = None, one = False, d
             if not os.path.exists(save_dir_images):
                 os.makedirs(save_dir_images)
 
-            save_path_images = os.path.join(target_dir, "images/frame{}".format(i))
+            save_path_images = os.path.join(target_dir, "images/frame{}.jpg".format(i))
             visualize.save_instances(image, save_path_images, r['rois'], r['masks'], r['class_ids'],
                                       class_names, r['scores'])
 
@@ -166,7 +167,7 @@ if __name__=="__main__":
 
 
     # The name of the directory to save the processed data
-    target_dir_name = "football1_sm"
+    target_dir_name = "football1_sm5"
 
     #The name of the hdf5 file to save the data
     save_name = "{}.hdf5".format(target_dir_name)
@@ -180,10 +181,11 @@ if __name__=="__main__":
         os.makedirs(save_dir)
 
     detection_confidence = 0.5
+    detection_nms_threshold = 0.3
 
     run_mask_rcnn(save_name,
                   save_dir,
-                  generate_image_dir_path(image_dir_name), save_images = True, detection_confidence=detection_confidence)
+                  generate_image_dir_path(image_dir_name), save_images = True, detection_confidence=detection_confidence ,detection_nms_threshold=detection_nms_threshold)
 
 
 

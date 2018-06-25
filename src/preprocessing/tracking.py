@@ -9,10 +9,12 @@ import h5py
 import numpy as np
 from Mask_RCNN.mrcnn import visualize
 from preprocessing.utils import make_colormap,find_start_count
+from preprocessing.discard import  class_and_size_discard
 from sort.sort import Sort, KalmanBoxTracker
 
 from scipy.spatial import distance
 from shutil import copyfile
+from sklearn.utils.linear_assignment_ import linear_assignment
 
 
 
@@ -29,73 +31,83 @@ def find_nn(query, array):
 
 
 
-def get_mask_stats(file,class_filtered_indices, threshold, verbose =0):
-    mask_list = []
-    start_count = find_start_count(list(file.keys()))
+def iou(bb_test,bb_gt):
+  """
+  Computes IUO between two bboxes in the form [x1,y1,x2,y2]
+  """
+  xx1 = np.maximum(bb_test[0], bb_gt[0])
+  yy1 = np.maximum(bb_test[1], bb_gt[1])
+  xx2 = np.minimum(bb_test[2], bb_gt[2])
+  yy2 = np.minimum(bb_test[3], bb_gt[3])
+  w = np.maximum(0., xx2 - xx1)
+  h = np.maximum(0., yy2 - yy1)
+  wh = w * h
+  o = wh / ((bb_test[2]-bb_test[0])*(bb_test[3]-bb_test[1])
+    + (bb_gt[2]-bb_gt[0])*(bb_gt[3]-bb_gt[1]) - wh)
+  return(o)
 
-    frame_indices = range(start_count, file['frame_number'].value[0])
-
-    for i in frame_indices:
-        frame = "frame{}".format(i)
-
-        for mask_idx in class_filtered_indices[i]:
-            mask_area = np.sum(file[frame]["masks"].value[:, :, mask_idx])
-            mask_list.append(mask_area)
-    if verbose == 2: print(mask_list)
-    return np.mean(mask_list), np.std(mask_list), np.percentile(mask_list,threshold)
 
 
-def discard_masks(data_file,target_file, masks_to_keep = ['car','truck'], small_threshold = -1, verbose=0):
-    f = h5py.File(data_file, "r")
-    cls_names = f["class_names"]
-
-    mask_bstrings = [np.string_(j) for j in masks_to_keep]
-    mask_ids = [np.where(cls_names.value == name)[0][0] for name in mask_bstrings]
-
-    if verbose == 1: print("The mask_ids to look for {}".format(mask_ids))
-
+def iou_track(data_file):
+    f = h5py.File(data_file, "r+")
     start_count = find_start_count(list(f.keys()))
+    first_frame = "frame{}".format(start_count)
 
-    frame_indices = range(start_count, f['frame_number'].value[0])
+    track_n = f[first_frame]['masks'].shape[2]
 
-    class_filtered_indices = []
-    if(start_count == 1):
-        class_filtered_indices.append(None)
+    index_array = np.arange(1,track_n+1)
+    index_array = np.stack((index_array,index_array),axis =1)
+    f.create_dataset("{}/IDs".format(first_frame), data=index_array)
 
-    for i in frame_indices :
+    for i in range(start_count+1, f['frame_number'].value[0]):
+
         frame = "frame{}".format(i)
-        class_filtered_indices.append(np.where(np.isin(f[frame]['class_ids'].value, mask_ids))[0])
+        previous_frame = "frame{}".format(i-1)
 
-    if (small_threshold > 0):
-        mean, std, percentile = get_mask_stats(f,class_filtered_indices, small_threshold, verbose)
-        if verbose == 1: print("mean area : {}, std aread : {}, percentile {}".format(mean, std, percentile))
+        previous_mask_n = f[previous_frame]['masks'].shape[2]
+        current_mask_n = f[frame]['masks'].shape[2]
 
-    f2 = h5py.File(target_file, "w")
-    f2.create_dataset("class_names", data=f["class_names"])
-    f2.create_dataset("tracks_n", data=np.array([0]))
-    f2.create_dataset("frame_number", data=f["frame_number"])
+        index_array = np.zeros((current_mask_n,2))
 
-    for i in frame_indices:
-        frame = "frame{}".format(i)
-        if (small_threshold > 0):
-            relevant_masks = []
-            for mask_id in class_filtered_indices[i]:
-                if (np.sum(f[frame]["masks"].value[:, :, mask_id]) > percentile):
-                    relevant_masks.append(mask_id)
-                elif(verbose==1):
-                    print("Discarding mask with area {}".format(np.sum(f[frame]["masks"].value[:, :, mask_id])))
-        else:
-            relevant_masks = class_filtered_indices[i]
 
-        f2.create_dataset("{}/class_ids".format(frame), data=f[frame]['class_ids'].value[relevant_masks])
-        f2.create_dataset("{}/image".format(frame), data=f[frame]["image"].value)
-        f2.create_dataset("{}/rois".format(frame), data=f[frame]["rois"].value[relevant_masks])
-        f2.create_dataset("{}/scores".format(frame), data=f[frame]["scores"].value[relevant_masks])
-        f2.create_dataset("{}/masks".format(frame), data=f[frame]["masks"].value[:, :, relevant_masks])
+        ious = np.zeros((current_mask_n, previous_mask_n))
 
+
+        for mask_id in range(current_mask_n):
+            current_box = f[frame]['rois'].value[mask_id,:]
+            ious[mask_id,:] = np.array([iou(f[previous_frame]['rois'].value[previous_id,:], current_box)  for previous_id in range(f[previous_frame]['rois'].shape[0])])
+
+        assignments = linear_assignment(-ious)
+
+        assigned_ids = []
+        for assignment in assignments:
+            assigned_ids.append(assignment[0])
+            if (ious[assignment[0], assignment[1]] > 0):
+                index_array[assignment[0], :] = f[previous_frame]['IDs'].value[assignment[1], 0]
+            else:
+                track_n += 1
+                index_array[assignment[0], :] = track_n
+
+
+        if (len(assignments) < ious.shape[0]):
+            missing_ids = [i for i in range(current_mask_n) if i not in assigned_ids]
+            for missing_id in missing_ids:
+                track_n += 1
+                index_array[missing_id, :] = track_n
+
+
+
+
+
+
+        f.create_dataset("{}/IDs".format(frame), data=index_array)
+
+    f["tracks_n"][0] = track_n
 
     f.close()
-    f2.close()
+
+
+
 
 
 
@@ -178,13 +190,22 @@ def track(data_file, reverse= False, verbose = 0):
 
 
 
-def recursive_update(f,change_from,change_to, col_idx,i):
+def recursive_update(f,change_from,change_to, col_idx, i, start_count):
+    max_idx = f['frame_number'].value[0] + start_count -1
+    if(i > max_idx):
+        return
+
     frame = "frame{}".format(i)
+
+
+
     IDs = f[frame]['IDs'].value
+
 
     if(np.any(IDs[:,col_idx]==change_from)):
         idx = np.where(IDs[:, col_idx] == change_from)
         f[frame]['IDs'][idx[0][0],col_idx]=change_to
+        recursive_update(f,change_from,change_to,col_idx,i+1,start_count)
 
 
 def consolidate_indices(data_file, target_file= None, verbose = 0):
@@ -208,8 +229,6 @@ def consolidate_indices(data_file, target_file= None, verbose = 0):
 
 
         IDs_1= f[frame1]['IDs'].value
-
-
         IDs_2 = f[frame2]['IDs'].value
 
 
@@ -230,7 +249,7 @@ def consolidate_indices(data_file, target_file= None, verbose = 0):
                 if(change_from==0):
                     f[frame2]['IDs'][idx[0][0],1]=change_to
                 else:
-                    recursive_update(f,change_from, change_to,1 ,i+1)
+                    recursive_update(f,change_from, change_to,1 ,i+1, start_count)
             elif (np.any(id_pair_1[1] == IDs_2[:, 1]) ): #and not id_pair_1[1] == 0
                 idx= np.where(IDs_2[:, 1] == id_pair_1[1])
                 change_to = id_pair_1[0]
@@ -239,7 +258,7 @@ def consolidate_indices(data_file, target_file= None, verbose = 0):
                 if (change_from == 0):
                     f[frame2]['IDs'][idx[0][0], 0] = change_to
                 else:
-                    recursive_update(f, change_from, change_to, 0, i + 1)
+                    recursive_update(f, change_from, change_to, 0, i + 1,start_count)
 
     f["tracks_n"][0] = tracks_n
     f.close()
@@ -262,6 +281,7 @@ def visualise_tracks(data_file, target_folder, id_idx = 0):
 
     #Save visualisations
     #TODO: Get rid of the rest of the padding on the saved visualisations
+    #TODO: Fix the caption problem
 
     start_count = find_start_count(list(f.keys()))
 
@@ -291,44 +311,50 @@ if __name__ == "__main__":
 
 
 
-    trck = True
+    trck = False
     vis = False
     consolidate = False
 
-    # Path to the processed and raw folders in the data
+    iou_trck = True
+
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
     RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-    data_file = os.path.join(PROCESSED_PATH, "30SLight1_Test2/30SLight1_Test2.hdf5")
-    target_file = os.path.join(PROCESSED_PATH, "30SLight1_Test2/30SLight1_Test2_Fewer_Masks.hdf5")
-    consolidated_file = os.path.join(PROCESSED_PATH, "30SLight1_Test2/30SLight1_Test2_Fewer_Masks_Consolidated.hdf5")
-    target_folder = os.path.join(PROCESSED_PATH, "30SLight1_Test2/tracked_images_gauss/")
+    name = "football1_sm5"
+
+    data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
+    class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
+
+    tracked_file = os.path.join(PROCESSED_PATH, "{}/{}_tracked.hdf5".format(name, name))
+    resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name, name))
+    dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
+    target_folder = os.path.join(PROCESSED_PATH, "{}/mask_images/".format(name))
+    target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
+    target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
 
     if(trck):
-        print("Discarding other masks...")
-
-        discard_masks(data_file,target_file, small_threshold=20)
-
         print("tracking...")
 
-        track(target_file,verbose=0)
+        track(tracked_file,verbose=0)
 
         print("tracking reverse...")
 
-        track(target_file,reverse=True, verbose=0)
+        track(tracked_file,reverse=True, verbose=0)
 
     if(vis):
         print("Creating the tracked visualisation...")
         target_folder = os.path.join(PROCESSED_PATH, "30SLight2/tracked_images/")
 
 
-        visualise_tracks(target_file,target_folder)
+        visualise_tracks(tracked_file,target_folder)
 
     if(consolidate):
         print("Doing index consolidation...")
-        consolidate_indices(target_file,  verbose =0)
+        consolidated_file = os.path.join(PROCESSED_PATH, "{}/{}_tracked_c.hdf5".format(name, name))
+        consolidate_indices(tracked_file,consolidated_file,  verbose =0)
 
 
 
-
+    if(iou_trck):
+        iou_track(tracked_file)
 

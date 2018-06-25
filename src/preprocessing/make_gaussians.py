@@ -86,6 +86,9 @@ def make_gaussian_masks(data_file, use_covariance=False ,verbose = 0):
 
             if(not np.sum(use_covariance) > 0):
                 cov = np.cov(pix_pos)
+            else:
+                cov = use_covariance
+
             mean = f[frame]['centroids'].value[mask_idx]
 
             x = np.broadcast_to(np.arange(image_dims[0]).reshape(image_dims[0],1), (image_dims[0], image_dims[1]))
@@ -215,6 +218,7 @@ def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True):
 
     #Save visualisations
     #TODO: Get rid of the rest of the padding on the saved visualisations
+    #TODO: FIX THE CAPTION PROBLEM
 
     start_count = find_start_count(list(f.keys()))
 
@@ -228,11 +232,13 @@ def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True):
 
         if(captions):
             captions = ['ID: {}'.format(IDs[i]) for i in range(IDs.shape[0])]
+        else:
+            captions = None
 
         save_path = os.path.join(target_folder,"{}.jpg".format(frame))
 
         save_gaussians(image, save_path, r['gaussians'].value, r['centroids'].value,r['rois'].value,
-                       colors=colors, captions=captions, extra_padding=0)
+                       colors=colors, captions=captions)
 
 
     f.close()

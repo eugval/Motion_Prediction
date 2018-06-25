@@ -1,6 +1,18 @@
 import colorsys
 import random
 import matplotlib.pyplot as plt
+import os
+import sys
+import h5py
+
+ROOT_DIR = os.path.abspath("../")
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+
+from Mask_RCNN.mrcnn import visualize
+
+
 
 def find_start_count(key_list):
     if("frame0" in key_list):
@@ -43,3 +55,30 @@ def visualise_image(image, save_path = None):
         plt.savefig(save_path , bbox_inches='tight', pad_inches = 0)
     plt.show()
     plt.close()
+
+
+
+
+
+
+def visualise_masks(data_file, target_folder):
+    if not os.path.exists(target_folder):
+        os.makedirs(target_folder)
+
+    f=h5py.File(data_file, "r")
+
+    start_count = find_start_count(list(f.keys()))
+
+    for i in range(start_count, f['frame_number'].value[0]):
+        frame = "frame{}".format(i)
+        r = f[frame]
+        image = r['image'].value
+        class_names = f["class_names"]
+
+
+        save_path = os.path.join(target_folder,"{}.jpg".format(frame))
+        visualize.save_instances(image, save_path, r['rois'], r['masks'], r['class_ids'],
+                                  class_names, r['scores'])
+
+
+    f.close()

@@ -7,7 +7,8 @@ sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 
 from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , generate_image_dir_path
 
-from preprocessing.tracking import discard_masks, track, consolidate_indices, visualise_tracks
+from preprocessing.tracking import  track, consolidate_indices, visualise_tracks
+from preprocessing.discard import  score_discard, class_and_size_discard
 
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
 
@@ -59,7 +60,7 @@ for name in names:
     print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     print("Discarding Masks...")
-    discard_masks(data_file,tracked_file, small_threshold = 20)
+    class_and_size_discard(data_file,tracked_file, small_threshold = 20)
 
     print("--- %s seconds elapsed ---" % (time.time() - start_time))
 

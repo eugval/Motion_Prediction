@@ -6,8 +6,6 @@ ROOT_DIR = os.path.abspath("../")
 
 def get_idx_from_id(idx,file,frame_num,id_idx=0):
     frame = 'frame{}'.format(frame_num)
-    if(frame_num ==110):
-        print('high')
     return np.where(file[frame]['IDs'].value[:,id_idx]==idx)[0][0]
 
 
