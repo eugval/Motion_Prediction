@@ -190,15 +190,34 @@ def track(data_file, reverse= False, verbose = 0):
 
 
 
+
+
 def recursive_update(f,change_from,change_to, col_idx, i, start_count):
+    max_idx = f['frame_number'].value[0] + start_count -1
+
+
+    for j in range(i, f['frame_number'].value[0]):
+        if(i > max_idx):
+            break
+
+        frame = "frame{}".format(j)
+        IDs = f[frame]['IDs'].value
+
+
+        if(np.any(IDs[:,col_idx]==change_from)):
+            idx = np.where(IDs[:, col_idx] == change_from)
+            f[frame]['IDs'][idx[0][0],col_idx]=change_to
+        else:
+            break
+
+
+
+def full_recursive_update(f,change_from,change_to, col_idx, i, start_count):
     max_idx = f['frame_number'].value[0] + start_count -1
     if(i > max_idx):
         return
 
     frame = "frame{}".format(i)
-
-
-
     IDs = f[frame]['IDs'].value
 
 
