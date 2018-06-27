@@ -27,7 +27,7 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [  ("Crossing2",3),("Football1",2), ("Football2",2),("Football1_sm",2)]
+names = [  ("Crossing2",1),("Football1",2), ("Football2",2),("Football1_sm",2)]
 #("30SLight1",1),("Light1",1), ("Light2",1),("Crossing1",1),
 
 start_time = time.time()
