@@ -27,8 +27,8 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Crossing1",1), ("Crossing2",1),("Football1",2), ("Football2",2),("Football1_sm",2)]
-#("30SLight1",1),("Light1",1), ("Light2",1),
+names = [  ("Crossing2",3),("Football1",2), ("Football2",2),("Football1_sm",2)]
+#("30SLight1",1),("Light1",1), ("Light2",1),("Crossing1",1),
 
 start_time = time.time()
 #Run the MaskRcnn
@@ -93,24 +93,29 @@ for name, config in names:
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
 
+    if(config == 1 or config == 2 ):
+        print("Resizing...")
+        resize_data(tracked_file, resized_file, 256, 314, maintain_ratio=True)
 
-    print("Resizing...")
-    resize_data(tracked_file, resized_file, 256, 314, maintain_ratio=True)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        print("Making gaussian masks...")
+        make_gaussian_masks(resized_file)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-    print("Making gaussian masks...")
-    make_gaussian_masks(resized_file)
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        print("Making the dataset...")
+        make_dataset(resized_file, dataset_file)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-    print("Making the dataset...")
-    make_dataset(resized_file, dataset_file)
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        print("Making Visualisation...")
+        visualise_tracks(resized_file, target_folder_consolidated, id_idx = 0)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-    print("Making Visualisation...")
-    visualise_tracks(resized_file, target_folder_consolidated, id_idx = 0)
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        print("Making Gaussian Visualisation...")
+        visualise_gaussians(resized_file,target_folder_gauss)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-    print("Making Gaussian Visualisation...")
-    visualise_gaussians(resized_file,target_folder_gauss)
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
+    elif(config==3):
+        print("Making Gaussian Visualisation...")
+        visualise_gaussians(resized_file, target_folder_gauss, verbose =0)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))

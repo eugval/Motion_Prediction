@@ -105,9 +105,12 @@ def make_gaussian_masks(data_file, use_covariance=False ,verbose = 0):
 
 
 
-def apply_centroid(image, x, y):
+def apply_centroid(image, x, y, verbose =0):
+    if (verbose == 1):
+        print(image.shape)
+        print(x, y)
 
-    if(x-3>0, y-3>0, x+3<image.shape[0],y+3<image.shape[1]):
+    if(x-3>0 and y-3>0 and x+3<image.shape[0] and y+3<image.shape[1]):
         for c in range(3):
             image[x-2:x+2,y-2:y+2,c] = np.zeros((4,4))
 
@@ -128,7 +131,7 @@ def apply_gaussian(image, gaussian, color):
 
 def save_gaussians(image,save_path, gaussians,centroids, boxes, title="",
                       figsize=(16, 16),
-                      colors=None, captions=None, show_bbox=True, extra_padding = 10):
+                      colors=None, captions=None, show_bbox=True, extra_padding = 10, verbose=0):
     """
     gaussians: [height, width, num_instances]
     title: (optional) Figure title
@@ -185,7 +188,8 @@ def save_gaussians(image,save_path, gaussians,centroids, boxes, title="",
         masked_image = apply_gaussian(masked_image, mask, color)
 
         # Centroids
-        masked_image = apply_centroid(masked_image,x,y)
+
+        masked_image = apply_centroid(masked_image,x,y, verbose=verbose)
 
         # Mask Polygon
         # Pad to ensure proper polygons for masks that touch image edges.
@@ -206,7 +210,7 @@ def save_gaussians(image,save_path, gaussians,centroids, boxes, title="",
 
 
 
-def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True):
+def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True, verbose =0):
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)
 
@@ -238,7 +242,7 @@ def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True):
         save_path = os.path.join(target_folder,"{}.jpg".format(frame))
 
         save_gaussians(image, save_path, r['gaussians'].value, r['centroids'].value,r['rois'].value,
-                       colors=colors, captions=captions)
+                       colors=colors, captions=captions, verbose= verbose)
 
 
     f.close()
