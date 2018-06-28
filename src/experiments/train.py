@@ -3,16 +3,21 @@ import os
 import sys
 ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
+MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
 
 
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+sys.path.append(os.path.join(ROOT_DIR,"data_eval"))
 
 import torch.optim as optim
 import torch.nn as nn
+import torch
 
+
+from data_eval.experiment import main_func
 
 from experiments.model import   SimpleUNet
 from experiments.model import TrainingTracker
@@ -23,15 +28,31 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
 
-num_epochs = 10
+num_epochs = 4
 
-data_file_name = "football1_sm5"
+model_name = "Mask_only_Simple_Unet"
+
+
+data_file_name = "Football1"
 dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_file_name,data_file_name))
 set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_file_name,data_file_name))
+model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
+model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
+model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pkl".format(model_name,model_name))
 
-net = SimpleUNet()
+net = SimpleUNet(12)
 print(net)
+
+net.to(device)
+
+
+
+if not os.path.exists(model_folder):
+    os.makedirs(model_folder)
 
 
 set_idx = pickle.load( open(set_idx_file, "rb" ) )
@@ -45,7 +66,7 @@ dataset = DataFromH5py(dataset_file,set_idx, transform = transforms.Compose([
 criterion = nn.MSELoss(size_average = False)
 optimizer = optim.RMSprop(net.parameters(), lr=0.001)
 
-dataloader = DataLoader(dataset, batch_size=32,
+dataloader = DataLoader(dataset, batch_size=64,
                         shuffle=True)
 
 tracker = TrainingTracker()
@@ -57,8 +78,8 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
     running_distance = []
     for i, data in enumerate(dataloader):
         # get the inputs
-        inputs = data['input'].float()
-        labels = data['label'].float()
+        inputs = data['input'].float().to(device)
+        labels = data['label'].float().to(device)
         labels = labels.unsqueeze(1)
 
 
@@ -85,13 +106,29 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
                   (epoch + 1, i + 1, tracker.running_loss[i],tracker.running_mean_distance[i], tracker.running_mode_distance[i]))
 
 
+
+torch.save(net.state_dict(), model_file)
 #tracker.plot_metrics("steps","values","plot")
+
+
+
+history = {"mean_dist": tracker.running_mean_distance,
+           "mode_dist":tracker.running_mode_distance,
+           "loss":tracker.running_loss }
+
+
+pickle.dump(history, open(model_history_file, "wb"))
 
 def plot_metrics(metric):
     plt.plot(np.arange(len(metric)), metric)
     plt.show()
 
+hist = pickle.load( open(model_history_file, "rb" ) )
+#plot_metrics(hist['mean_dist'])
+#plot_metrics(hist['mode_dist'])
+#plot_metrics(hist['loss'])
 
-plot_metrics(tracker.running_mean_distance)
-plot_metrics(tracker.running_mode_distance)
-plot_metrics(tracker.running_loss)
+print("YES")
+
+
+main_func()

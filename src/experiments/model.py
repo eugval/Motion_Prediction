@@ -6,23 +6,23 @@ import matplotlib.pyplot as plt
 
 
 class SimpleUNet(nn.Module):
-    def __init__(self):
+    def __init__(self, initial_channels):
         super(SimpleUNet, self).__init__()
-        self.conv1 = nn.Conv2d(12, 32, 3, padding=1)
+        self.conv1 = nn.Conv2d(initial_channels, 16, 3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 64, 3, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, 3, padding=1)
+        self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
 
-        self.deconv1 = nn.ConvTranspose2d(128, 64, 2, stride=2)
-        self.conv4 = nn.Conv2d(128, 64, 3, padding=1)
+        self.deconv1 = nn.ConvTranspose2d(64, 32, 2, stride=2)
+        self.conv4 = nn.Conv2d(64, 32, 3, padding=1)
 
-        self.deconv2 = nn.ConvTranspose2d(64, 32, 2, stride=2)
-        self.conv5 = nn.Conv2d(64, 32, 3, padding=1)
+        self.deconv2 = nn.ConvTranspose2d(32, 16, 2, stride=2)
+        self.conv5 = nn.Conv2d(32, 16, 3, padding=1)
 
-        self.conv6 = nn.Conv2d(32, 16, 3, padding=1)
+        self.conv6 = nn.Conv2d(16, 8, 3, padding=1)
 
-        self.conv7 = nn.Conv2d(16, 8, 3, padding=1)
-        self.conv8 = nn.Conv2d(8, 1, 1)
+        self.conv7 = nn.Conv2d(8, 4, 3, padding=1)
+        self.conv8 = nn.Conv2d(4, 1, 1)
 
     def forward(self, x):
         x1 = self.conv1(x)
@@ -87,7 +87,7 @@ class TrainingTracker(object):
         plt.show()
 
 
-
+#TODO: fix the resizing before the image calc
     def get_mean_distance(self,batch_outputs,batch_c_true, mode = "mean"):
 
         np_pred = batch_outputs.detach().numpy()

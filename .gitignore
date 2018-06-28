@@ -7,6 +7,8 @@
 *.pickle
 *.h5
 *.gz
+*.pickle
+*.pkl
 
 #Compressed data files should not be uploaded
 *.zip
