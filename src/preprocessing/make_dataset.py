@@ -1,7 +1,14 @@
+import os
+import sys
+ROOT_DIR = os.path.abspath("../")
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+
 import h5py
 from preprocessing.utils import find_start_count
 import numpy as np
-import os
+
 ROOT_DIR = os.path.abspath("../")
 import pickle
 
