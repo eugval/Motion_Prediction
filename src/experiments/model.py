@@ -90,7 +90,7 @@ class TrainingTracker(object):
 #TODO: fix the resizing before the image calc
     def get_mean_distance(self,batch_outputs,batch_c_true, mode = "mean"):
 
-        np_pred = batch_outputs.detach().numpy()
+        np_pred = batch_outputs.detach().cpu().numpy()
         np_pred = np.squeeze(np_pred, axis =1)
         np_c_true = batch_c_true.numpy()
 
