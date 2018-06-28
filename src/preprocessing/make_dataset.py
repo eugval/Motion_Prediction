@@ -210,3 +210,5 @@ if __name__ == "__main__":
             f.close()
             idx_sets = make_train_test_split(dataset_size, 0.1)
             idx_sets = make_val_set(idx_sets, 0.1, save_path=set_idx_file)
+
+        print("finished {}".format(name))
