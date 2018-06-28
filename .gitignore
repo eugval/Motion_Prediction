@@ -6,6 +6,7 @@
 *.hdf5
 *.pickle
 *.h5
+*.gz
 
 #Compressed data files should not be uploaded
 *.zip
