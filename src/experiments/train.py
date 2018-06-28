@@ -32,7 +32,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-num_epochs = 4
+num_epochs = 35
 
 model_name = "Mask_only_Simple_Unet"
 
@@ -66,7 +66,7 @@ dataset = DataFromH5py(dataset_file,set_idx, transform = transforms.Compose([
 criterion = nn.MSELoss(size_average = False)
 optimizer = optim.RMSprop(net.parameters(), lr=0.001)
 
-dataloader = DataLoader(dataset, batch_size=64,
+dataloader = DataLoader(dataset, batch_size=128,
                         shuffle=True)
 
 tracker = TrainingTracker()
