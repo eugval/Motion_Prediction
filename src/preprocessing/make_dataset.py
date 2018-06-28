@@ -3,6 +3,7 @@ from preprocessing.utils import find_start_count
 import numpy as np
 import os
 ROOT_DIR = os.path.abspath("../")
+import pickle
 
 def get_idx_from_id(idx,file,frame_num,id_idx=0):
     frame = 'frame{}'.format(frame_num)
@@ -93,7 +94,7 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
         id_list = []
         for id, id_2 in f[frame]['IDs']:
 
-            future_frame = i + future_time-1
+            future_frame = i + future_time #Was -1 for first gen of data
             if(future_frame > max_frames-1):
                 break
 
@@ -111,11 +112,101 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
 
 
 
+
+
+
+def make_train_test_split(dataset_size, test_frac, save_path = False):
+    dataset_idx = np.random.permutation(dataset_size)
+
+    testset_size = int(test_frac * dataset_size)
+
+    test_idx, train_idx = dataset_idx[:testset_size], dataset_idx[testset_size:]
+
+    idx_sets = {'test': test_idx, 'train': train_idx, 'val': np.array([])}
+
+    if(save_path):
+        pickle.dump(idx_sets, open(save_path, "wb"))
+
+
+    return idx_sets
+
+
+def make_val_set(idx_sets, val_frac, save_path = False):
+    full_train = np.concatenate([idx_sets['train'],idx_sets['val']]).astype('int')
+
+    np.random.shuffle(full_train)
+
+    val_size = int(val_frac * full_train.shape[0])
+
+    val_idx, train_idx = full_train[:val_size], full_train[val_size:]
+
+    new_set = {'test': idx_sets['test'], 'train': train_idx, 'val': val_idx}
+    if (save_path):
+        pickle.dump(new_set, open(save_path, "wb"))
+
+    return new_set
+
+
+
+
+
+#TODO: Finish that funciton
+def convert_to_folder_structure(data_file, target_folder):
+    if not os.path.exists(target_folder):
+        os.makedirs(target_folder)
+
+    f = h5py.File(data_file, "r")
+
+    #TODO: Make a non-hardcoded implementation
+
+    metadata = {'datapoints': f['datapoints'].value[0],
+                'future_time': f['future_time'].value[0],
+                'number_inputs':f['number_inputs'].value[0],
+                'origin_file':f['origin_file'].value[0],
+                'timestep':f['timestep'].value[0] }
+
+
+    for i in range(f['datapoints'].value[0]):
+        pass
+
+
+
+
+
+#TODO: Abstact away all these files in a module
 if __name__ == "__main__":
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 
+    make_split = True
+    make_dataset= False
 
-    data_file = os.path.join(PROCESSED_PATH, "30SLight1_Test2/30SLight1_Test2_Fewer_Masks.hdf5")
-    target_file = os.path.join(PROCESSED_PATH, "30SLight1_Test2/30SLight1_Test2_dataset.hdf5")
+    # Path to the processed and raw folders in the data
+    PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
+    RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-    make_dataset(data_file,target_file)
+    names = [  ("Football1",2), ("30SLight1",1),("Crossing1",1),("Light1",1), ("Light2",1),("Crossing2",1), ("Football2",2),("Football1_sm",2)]
+
+    for name, config in names:
+        data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
+        class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
+
+        tracked_file = os.path.join(PROCESSED_PATH, "{}/{}_tracked.hdf5".format(name, name))
+        tracked_file_c = os.path.join(PROCESSED_PATH, "{}/{}_tracked_c.hdf5".format(name, name))
+        resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name, name))
+        dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
+        set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
+
+        target_folder = os.path.join(PROCESSED_PATH, "{}/mask_images/".format(name))
+        target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
+        target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
+
+
+        if(make_dataset):
+            make_dataset(resized_file, dataset_file)
+
+        if(make_split):
+            f = h5py.File(dataset_file, "r")
+            dataset_size = f['datapoints'].value[0]
+            f.close()
+            idx_sets = make_train_test_split(dataset_size, 0.1)
+            idx_sets = make_val_set(idx_sets, 0.1, save_path=set_idx_file)
