@@ -6,9 +6,9 @@ import numpy as np
 import os
 
 ROOT_DIR = os.path.abspath("../")
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-PATH_D = os.path.join(ROOT_DIR,"/data_eval/MNIST_data/")
+PATH_D = os.path.join(ROOT_DIR,"data_eval/MNIST_data/")
 # Import dataset with one-hot encoding of the class labels.
 def get_data():
   return input_data.read_data_sets(PATH_D, one_hot=True)
