@@ -91,6 +91,8 @@ for data_name in data_names:
     tracker = TrainingTracker()
 
 
+    print("Ready to train")
+    sys.stdout.flush()
     #### Start the training ####
 
     for epoch in range(num_epochs):
@@ -115,6 +117,7 @@ for data_name in data_names:
         print("Finished training epoch {}".format(epoch))
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
         print("Evaluating...")
+        sys.stdout.flush()
 
         #Evaluate Model
         #Evaluate on Trainnig set
@@ -148,6 +151,7 @@ for data_name in data_names:
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
         print("Finished Training, saving model and  training tracker...")
+        sys.stdout.flush()
         torch.save(model.state_dict(), model_file)
 
     pickle.dump(tracker, open(model_history_file, "wb"))
