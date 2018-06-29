@@ -2,25 +2,34 @@ from torch.utils.data import Dataset
 import h5py
 import numpy as np
 import cv2
+import torch
 
 class DataFromH5py(Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, file_path, set_idx,  input_type = ["images","masks"], label_type ='future_mask', other_sample_entries = ["future_centroid"],transform=None):
+    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["images","masks"], label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
+        #Data and data manipulations
         self.f = h5py.File(file_path, "r")
         self.transform = transform
-        self.set_idx = set_idx
-        self.train_len = set_idx['train'].shape[0]
+
+        #Train / Test / Val splits
+        self.purpose = purpose #train /test /val
+        self.idx_sets = idx_sets
+        self.len = idx_sets[purpose].shape[0]
+
+        #Sample parameters
         self.label_type = label_type
         self.input_type = input_type
         self.other_sample_entries = other_sample_entries
+
+        #Data general parameters
         self.initial_dims = (self.f['datapoint1']['images'].shape[0], self.f['datapoint1']['images'].shape[1])
 
     def __len__(self):
-        return self.train_len
+        return self.len
 
     def __getitem__(self, idx):
-        datapoint_idx = self.set_idx['train'][idx]
+        datapoint_idx = self.idx_sets[self.purpose][idx]
 
         frame = "datapoint{}".format(datapoint_idx)
 
@@ -64,11 +73,12 @@ class ToTensor(object):
         # numpy image: H x W x C
         # torch image: C X H X W
         input = input.transpose((2, 0, 1))
-        new_sample['input'] = input / 255
+        new_sample['input'] = torch.from_numpy(input / 255)
+        new_sample['label'] = torch.from_numpy(sample['label'])
         return new_sample
 
 
-class ResizeInput(object):
+class ResizeSample(object):
     def __init__(self, height= 128, width = 256):
         self.h = int(height)
         self.w = int(width)
@@ -91,3 +101,28 @@ class ResizeInput(object):
 
 
 
+if __name__=='__main__':
+    import pickle
+    import os
+    ROOT_DIR = os.path.abspath("../")
+    PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
+    from torchvision import transforms
+
+
+    data_file_name = "Football1"
+    dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_file_name,data_file_name))
+    set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_file_name,data_file_name))
+
+    set_idx = pickle.load( open(set_idx_file, "rb" ) )
+
+
+    dataset = DataFromH5py(dataset_file,set_idx, transform = transforms.Compose([
+                                               ResizeSample(),
+                                               ToTensor()
+                                           ]))
+
+    for i in range(len(dataset)):
+        print(i)
+        sample = dataset[i]
+        print(sample)
+        print(sample['input'].size(),sample['label'].size())

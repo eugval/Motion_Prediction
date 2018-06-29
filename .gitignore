@@ -15,7 +15,7 @@
 
 .ipynb_checkpoints/
 __pycache__/
-
+logs/
 
 
 .DS_Store

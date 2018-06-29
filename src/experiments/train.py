@@ -21,7 +21,7 @@ from data_eval.experiment import main_func
 
 from experiments.model import   SimpleUNet
 from experiments.model import TrainingTracker
-from experiments.load_data import DataFromH5py, ResizeInput, ToTensor
+from experiments.load_data import DataFromH5py, ResizeSample, ToTensor
 from torchvision import transforms
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
@@ -59,7 +59,7 @@ set_idx = pickle.load( open(set_idx_file, "rb" ) )
 
 
 dataset = DataFromH5py(dataset_file,set_idx, transform = transforms.Compose([
-                                               ResizeInput(),
+                                               ResizeSample(),
                                                ToTensor()
                                            ]))
 
@@ -95,6 +95,29 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
         # print statistics
         l2 = loss.item()
         c_true = data['future_centroid']
+
+
+    #Evaluate on Training Set
+
+    #Get random sample of training datapoints
+    eval_train = np.random.permutation(int(0.25*len(dataset)))
+
+    loss = 0.0
+    for index in eval_train:
+        datapoint = dataset[index]
+        input = data['input'].float().to(device)
+        label = data['label'].float().to(device)
+        labels = label.unsqueeze(1)
+
+
+        output = net(input)
+    #Loop through those
+        loss += criterion(output, label).item()
+
+    #Evaluate on Validation Set
+
+
+
 
         #TODO: make it so I can do it for epochs
         tracker.add_distance(outputs,c_true,"mean")
