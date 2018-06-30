@@ -36,7 +36,7 @@ for data_name in data_names:
     ###### PARAMETERS #######
     model_name = "Mask_only_Simple_Unet_{}".format(data_name)
     num_epochs = 40
-    batch_size = 1000
+    batch_size = 256
     learning_rate = 0.01
     eval_percent = 0.1
 
