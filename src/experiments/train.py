@@ -30,12 +30,13 @@ print(device)
 
 
 data_names = ['Football1', 'Crossing1','Crossing2','Football2','Light1' ]
+#data_names = ['football1_sm5']
 
 for data_name in data_names:
     ###### PARAMETERS #######
     model_name = "Mask_only_Simple_Unet_{}".format(data_name)
-    num_epochs = 50
-    batch_size = 128
+    num_epochs = 40
+    batch_size = 1000
     learning_rate = 0.01
     eval_percent = 0.1
 

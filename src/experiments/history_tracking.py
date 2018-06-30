@@ -2,9 +2,9 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
-class DistanceViaMean(object):
-    name = 'dist_via_mean'
-    def get_metric(self, grid, centroid):
+
+class CentroidCalculator(object):
+    def get_centroid_via_mean(self, grid):
         grid_dims = grid.shape
 
         x = np.broadcast_to(np.arange(grid_dims[0]).reshape(grid_dims[0], 1), (grid_dims[0], grid_dims[1]))
@@ -14,10 +14,25 @@ class DistanceViaMean(object):
         positions = np.reshape(d, (-1, 2))
         w = [grid[tuple(v)] for v in positions]
 
-        mean_x = np.average(positions[:,0], weights = w)
-        mean_y = np.average(positions[:,1], weights = w)
+        mean_x = np.average(positions[:, 0], weights=w)
+        mean_y = np.average(positions[:, 1], weights=w)
 
-        dist = np.linalg.norm(centroid - np.array([mean_x,mean_y]))
+        return np.array([mean_x,mean_y])
+
+    def get_centroid_via_mode(self,grid):
+        return np.unravel_index(np.argmax(grid), grid.shape)
+
+
+class DistanceViaMean(object):
+    name = 'dist_via_mean'
+
+    def __init__(self):
+        self.centroid_calculator = CentroidCalculator()
+
+    def get_metric(self, grid, centroid):
+        centroid_pred = self.centroid_calculator.get_centroid_via_mean(grid)
+
+        dist = np.linalg.norm(centroid - centroid_pred)
 
         return dist
 
@@ -37,7 +52,9 @@ class DistanceViaMean(object):
 
             output = output.detach().cpu().numpy()
             output = np.squeeze(output)
-            output = cv2.resize(output, dataset.initial_dims)
+            intial_h = dataset.initial_dims[0]
+            initial_w = dataset.initial_dims[1]
+            output = cv2.resize(output, (initial_w, intial_h))
 
 
             tot_dist += self.get_metric(output,centroid)
@@ -45,11 +62,17 @@ class DistanceViaMean(object):
         return tot_dist / float(num_examples)
 
 
+
+
 class DistanceViaMode(object):
     name = 'dist_via_mode'
+
+    def __init__(self):
+        self.centroid_calculator = CentroidCalculator()
+
     def get_metric(self, grid, centroid):
-        mode_coords = np.unravel_index(np.argmax(grid), grid.shape)
-        dist = np.linalg.norm(centroid - mode_coords)
+        centroid_pred = self.centroid_calculator.get_centroid_via_mode(grid)
+        dist = np.linalg.norm(centroid - centroid_pred)
         return dist
 
     def evaluate(self, model, dataset, device, eval_percent=1):
@@ -69,7 +92,9 @@ class DistanceViaMode(object):
 
             output = output.detach().cpu().numpy()
             output = np.squeeze(output)
-            output = cv2.resize(output, dataset.initial_dims)
+            intial_h = dataset.initial_dims[0]
+            initial_w = dataset.initial_dims[1]
+            output = cv2.resize(output, (initial_w, intial_h))
 
 
 

@@ -25,6 +25,9 @@ class DataFromH5py(Dataset):
         #Data general parameters
         self.initial_dims = (self.f['datapoint1']['images'].shape[0], self.f['datapoint1']['images'].shape[1])
 
+        if(hasattr(transform, 'h' ) and hasattr(transform , 'w')):
+            self.resized_dims =(transform.h, transform.w)
+
     def __len__(self):
         return self.len
 
@@ -59,6 +62,32 @@ class DataFromH5py(Dataset):
 
         return sample
 
+    def get_raw(self, idx):
+        datapoint_idx = self.idx_sets[self.purpose][idx]
+
+        frame = "datapoint{}".format(datapoint_idx)
+
+        inputs = []
+        for in_type in self.input_type:
+            inp = self.f[frame][in_type].value
+            if (len(inp.shape) == 4):
+                for i in range(inp.shape[3]):
+                    inputs.append(inp[:, :, :, i])
+            elif (len(inp.shape) == 3):
+                for i in range(inp.shape[2]):
+                    inputs.append(inp[:, :, i])
+            else:
+                raise ValueError("Inputs can have 3 or 4 dimentions")
+
+        label = self.f[frame][self.label_type].value
+
+        sample = {'input': inputs, 'label': label}
+
+        for key in self.other_sample_entries:
+            sample[key] = self.f[frame][key].value
+
+        return sample
+
 
 
 
@@ -89,7 +118,7 @@ class ResizeSample(object):
 
         new_sample = sample
 
-        input = cv2.resize(input, (self.w,self.h))
+        input = cv2.resize(input, (self.w, self.h))
         label = cv2.resize(label, (self.w, self.h))
 
         new_sample['input'] = input
