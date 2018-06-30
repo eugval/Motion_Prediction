@@ -29,7 +29,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football1', 'Crossing1','Crossing2','Football2','Light1' ]
+data_names = ['Football1', 'Crossing1', 'Light1', 'Football2', 'Crossing2' ]
 #data_names = ['football1_sm5']
 
 for data_name in data_names:
