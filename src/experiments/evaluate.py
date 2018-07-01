@@ -46,6 +46,8 @@ for data_name in data_names:
     model = SimpleUNet(12)
     model.load_state_dict(torch.load(model_file))
 
+    model.to(device)
+
     idx_sets = pickle.load(open(idx_sets_file, "rb"))
     dataset = DataFromH5py(dataset_file,idx_sets, transform = transforms.Compose([
                                                        ResizeSample(),
