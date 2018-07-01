@@ -9,6 +9,9 @@ import h5py
 from preprocessing.utils import find_start_count
 import numpy as np
 
+
+import matplotlib.pyplot as plt
+
 ROOT_DIR = os.path.abspath("../")
 import pickle
 
@@ -180,12 +183,97 @@ def convert_to_folder_structure(data_file, target_folder):
 
 
 
+
+def visualise_dataset_inputs(data_file,target_file = False, idx = 1 ):
+    f = h5py.File(data_file, "r")
+
+    if( not type(idx == int)):
+        idx_sets = pickle.load(open(idx, "rb"))
+
+        idx = np.random.randint(len(idx_sets['train']))
+
+    key = 'datapoint{}'.format(idx)
+
+    datapoint = f[key]
+
+    number_of_inputs = f['number_inputs'].value[0]
+    timestep = f['timestep'].value[0]
+
+    f, axarr = plt.subplots(number_of_inputs, 3, figsize=(27,15))
+
+
+    for i in range(number_of_inputs):
+        axarr[i, 0].imshow(datapoint['images'].value[:,:,:,i])
+        axarr[i, 0].set_title("RGB from frame t+{}".format(i*timestep))
+
+        axarr[i,1].imshow(datapoint['masks'].value[:,:,i])
+        centroid = (datapoint['centroids'].value[i,1], datapoint['centroids'].value[i,0])
+        axarr[i, 1].scatter(*zip(centroid), marker='+')
+        axarr[i, 1].set_title("Mask and centroid from frame t+{}".format(i*timestep))
+
+        axarr[i,2].imshow(datapoint['delta_masks'].value[:,:,i])
+        axarr[i, 2].set_title("Mask at t+{} - Mask at t".format(i*timestep))
+
+    f.tight_layout()
+    if(target_file):
+
+        f.savefig(target_file)
+    else:
+        f.show()
+
+
+
+def visualise_dataset_labels(data_file,target_file=False,idx=1, new_gen = True):
+    f = h5py.File(data_file, "r")
+
+    if (not type(idx == int)):
+        idx_sets = pickle.load(open(idx, "rb"))
+
+        idx = np.random.randint(len(idx_sets['train']))
+
+    key = 'datapoint{}'.format(idx)
+
+    datapoint = f[key]
+
+    future_time = f['future_time'].value[0]
+    if(not new_gen):
+        future_time = future_time - 1
+
+
+    f, axarr = plt.subplots(2 ,figsize=(10, 10))
+
+    centroid = (datapoint['future_centroid'].value[1], datapoint['future_centroid'].value[0])
+
+    axarr[0].imshow(datapoint['future_mask'].value[:, :])
+    axarr[0].set_title("Mask and centroid from frame t+{}".format(future_time))
+    axarr[0].scatter(*zip(centroid), marker='+')
+
+    axarr[1].imshow(datapoint['gaussian_mask'].value[: ,:])
+    axarr[1].scatter(*zip(centroid), marker='+')
+    axarr[1].set_title("Gaussian and centroid from frame t+{}".format(future_time))
+
+    f.tight_layout()
+    if (target_file):
+
+        f.savefig(target_file)
+    else:
+        f.show()
+
+
+
+
+
+
+
+
+
 #TODO: Abstact away all these files in a module
 if __name__ == "__main__":
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 
-    make_split = True
+    make_split = False
     make_dataset= False
+    visualise_dataset = True
 
     # Path to the processed and raw folders in the data
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
@@ -193,6 +281,7 @@ if __name__ == "__main__":
 
     names = [  ("Football1",2), ("30SLight1",1),("Crossing1",1),("Light1",1), ("Light2",1),("Crossing2",1), ("Football2",2),("Football1_sm",2)]
 
+    #names = [('Football1_sm5',1)]
     for name, config in names:
         data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
         class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
@@ -202,6 +291,8 @@ if __name__ == "__main__":
         resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name, name))
         dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
         set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
+        input_vis_file =os.path.join(PROCESSED_PATH, "{}/{}_input_vis.png".format(name, name))
+        label_vis_file = os.path.join(PROCESSED_PATH, "{}/{}_label_vis.png".format(name, name))
 
         target_folder = os.path.join(PROCESSED_PATH, "{}/mask_images/".format(name))
         target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
@@ -217,5 +308,9 @@ if __name__ == "__main__":
             f.close()
             idx_sets = make_train_test_split(dataset_size, 0.1)
             idx_sets = make_val_set(idx_sets, 0.1, save_path=set_idx_file)
+
+        if(visualise_dataset):
+            visualise_dataset_inputs(dataset_file,input_vis_file )
+            visualise_dataset_labels(dataset_file, label_vis_file, new_gen=False)
 
         print("finished {}".format(name))

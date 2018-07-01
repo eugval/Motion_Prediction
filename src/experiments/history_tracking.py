@@ -29,8 +29,11 @@ class DistanceViaMean(object):
     def __init__(self):
         self.centroid_calculator = CentroidCalculator()
 
+    def get_centroid(self, grid):
+        return self.centroid_calculator.get_centroid_via_mean(grid)
+
     def get_metric(self, grid, centroid):
-        centroid_pred = self.centroid_calculator.get_centroid_via_mean(grid)
+        centroid_pred = self.get_centroid(grid)
 
         dist = np.linalg.norm(centroid - centroid_pred)
 
@@ -70,8 +73,11 @@ class DistanceViaMode(object):
     def __init__(self):
         self.centroid_calculator = CentroidCalculator()
 
+    def get_centroid(self, grid):
+        return self.centroid_calculator.get_centroid_via_mode(grid)
+
     def get_metric(self, grid, centroid):
-        centroid_pred = self.centroid_calculator.get_centroid_via_mode(grid)
+        centroid_pred = self.get_centroid(grid)
         dist = np.linalg.norm(centroid - centroid_pred)
         return dist
 
@@ -174,12 +180,12 @@ class TrainingTracker(object):
 
 
     def plot_all(self, save_path = False):
-        plt.figure(figsize=(20, 20))
+        plt.figure(figsize=(20, 15))
         number_of_plots = len(self.metrics.keys())
 
         i = 1
         for k, v in self.metrics.items():
-            plt.subplot(number_of_plots, 1, i)
+            plt.subplot(int(number_of_plots/2), 2, i)
             plt.plot(v)
             plt.xlabel("Epochs")
             plt.ylabel(k)

@@ -16,20 +16,23 @@ import pickle
 
 from torchvision import transforms
 from experiments.model import   SimpleUNet
-from experiments.history_tracking import CentroidCalculator
+from experiments.history_tracking import DistanceViaMean, DistanceViaMode
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from matplotlib.offsetbox import AnchoredText
+
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 
+data_names =["Football1", "Crossing1","Light1"]
 
 data_name = 'Football1_sm5'
 
 
 model_name = "Mask_only_Simple_Unet_{}".format(data_name)
 model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
-
+model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name,model_name))
 
 dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name,data_name))
 idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
@@ -76,74 +79,79 @@ centroid_list = []
 true_centroid = sample_raw['future_centroid']
 centroid_list.append((true_centroid[1],true_centroid[0]))
 
-centroid_calculator = CentroidCalculator()
-centroid_via_mean = centroid_calculator.get_centroid_via_mean(output_initial_dims)
-centroid_list.append((centroid_via_mean[1],centroid_via_mean[0]))
-centroid_via_mode = centroid_calculator.get_centroid_via_mode(output_initial_dims)
-centroid_list.append((centroid_via_mode[1],centroid_via_mode[0]))
 
-plt.figure()
+distance_via_mean_calc = DistanceViaMean()
+distance_via_mode_calc = DistanceViaMode()
+centroid_via_mean = distance_via_mean_calc.get_centroid(output_initial_dims)
+centroid_list.append((centroid_via_mean[1],centroid_via_mean[0]))
+distance_via_mean = distance_via_mean_calc.get_metric(output_initial_dims,true_centroid)
+centroid_via_mode = distance_via_mode_calc.get_centroid(output_initial_dims)
+centroid_list.append((centroid_via_mode[1],centroid_via_mode[0]))
+distance_via_mode = distance_via_mode_calc.get_metric(output_initial_dims,true_centroid)
+
+
+plt.figure(figsize=(15,15))
 number_of_plots = 11
 
-plt.subplot(3, 4, 1)
+plt.subplot2grid((4,3),(0,0))
 plt.imshow(input_raw[0])
-plt.title("time t")
-plt.subplot(3, 4, 2)
-plt.imshow(input_raw[1])
-plt.title("time t+1")
-plt.subplot(3, 4, 3)
-plt.imshow(input_raw[2])
-plt.title("time t+2")
-plt.subplot(3, 4, 4)
+plt.title("RGB at time t")
+plt.subplot2grid((4,3),(0,1))
 plt.imshow(input_raw[3])
 plt.title("mask at  t")
-plt.subplot(3, 4, 5)
-plt.imshow(input_raw[4])
-plt.title("mask at  t+1")
-plt.subplot(3, 4, 6)
-plt.imshow(input_raw[5])
-plt.title("mask at  t+2")
 
-plt.subplot(3, 4, 7)
+
+plt.subplot2grid((4,3),(0,2))
 plt.imshow(label_raw)
 plt.title("raw label")
 plt.scatter(*zip(centroid_list[0]), marker = '+')
 
-plt.subplot(3, 4, 8)
+plt.subplot2grid((4,3),(1,0))
 plt.imshow(label)
 plt.title("resized label")
 
-plt.subplot(3, 4, 9)
+plt.subplot2grid((4,3),(1,1))
 plt.imshow(output)
 plt.title("direct output")
-plt.subplot(3, 4, 10)
+plt.subplot2grid((4,3),(1,2))
 plt.imshow(output_initial_dims)
 plt.title("resized output")
-plt.subplot(3, 4, 11)
+
+
+plt.subplot2grid((4,3),(2,0), rowspan=2, colspan=3  )
 plt.scatter(*zip(*centroid_list))
 plt.imshow(output_initial_dims)
 plt.annotate(
-    'true centroid:\ncoords: {}\ndist: {}'.format(true_centroid,true_centroid),
-    xy=(true_centroid[1],true_centroid[0]), xytext=(-20, 20),
+    'true centroid:\ncoords: {}'.format([ round(elem, 2) for elem in true_centroid ] ),
+    xy=(true_centroid[1],true_centroid[0]), xytext=(20, 20),
     textcoords='offset points', ha='right', va='bottom',
     bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
     arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
 
 
+
+centroid_via_mean =[ np.round(centroid_via_mean[i]) for i in range(2) ]
+
+
 plt.annotate(
-    'centroid mean:\ncoords: {}\ndist: {}'.format(centroid_via_mean,centroid_via_mean),
+    'centroid mean:\ncoords: {}\ndist: {}'.format(centroid_via_mean,round(distance_via_mean,2)),
     xy=(centroid_via_mean[1],centroid_via_mean[0]), xytext=(20, 20),
     textcoords='offset points', ha='right', va='bottom',
     bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
     arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
 
 plt.annotate(
-    'centroid mode:\n coords: {}, \n dist: {}'.format(centroid_via_mode, centroid_via_mode),
-    xy=centroid_via_mode, xytext=(-20, -20),
+    'centroid mode:\n coords: {}, \n dist: {}'.format([ round(elem, 2) for elem in centroid_via_mode ], round(distance_via_mode,2)),
+    xy=(centroid_via_mode[1], centroid_via_mode[0]), xytext=(20, 20),
     textcoords='offset points', ha='right', va='bottom',
     bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
     arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
 
+
+
+
 plt.title("centroids")
 
-plt.show()
+plt.tight_layout()
+plt.savefig(model_folder+"img")
+print("done")
