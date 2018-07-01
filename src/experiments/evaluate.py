@@ -3,7 +3,8 @@ import sys
 ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
-
+import matplotlib
+matplotlib.use('Agg')
 
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
@@ -13,7 +14,7 @@ sys.path.append(os.path.join(ROOT_DIR,"data_eval"))
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
+
 import cv2
 import pickle
 
@@ -22,7 +23,7 @@ from experiments.model import   SimpleUNet
 from experiments.history_tracking import DistanceViaMean, DistanceViaMode
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 
-matplotlib.use('Agg')
+
 
 from matplotlib.offsetbox import AnchoredText
 
