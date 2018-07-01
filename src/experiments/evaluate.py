@@ -13,6 +13,7 @@ sys.path.append(os.path.join(ROOT_DIR,"data_eval"))
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import cv2
 import pickle
 
@@ -21,6 +22,7 @@ from experiments.model import   SimpleUNet
 from experiments.history_tracking import DistanceViaMean, DistanceViaMode
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 
+matplotlib.use('Agg')
 
 from matplotlib.offsetbox import AnchoredText
 
