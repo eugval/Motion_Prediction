@@ -24,7 +24,7 @@ from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 
 from matplotlib.offsetbox import AnchoredText
 
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 
 data_names =["Football1", "Crossing1","Light1"]
