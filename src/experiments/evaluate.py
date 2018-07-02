@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
-sys.path.append(os.path.join(ROOT_DIR,"data_eval"))
+sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 
 
 import torch

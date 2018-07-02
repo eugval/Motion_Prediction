@@ -8,7 +8,7 @@ MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
 
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
-sys.path.append(os.path.join(ROOT_DIR,"data_eval"))
+sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 
 import torch
 import pickle
@@ -22,7 +22,7 @@ from torch.utils.data import  DataLoader
 from experiments.model import   SimpleUNet
 from experiments.history_tracking import DistanceViaMean, DistanceViaMode, LossMetric ,TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
-from data_eval.experiment import main_func
+from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -156,12 +156,6 @@ for data_name in data_names:
         torch.save(model.state_dict(), model_file)
 
     pickle.dump(tracker, open(model_history_file, "wb"))
-
-
-print("Auxiliary Task")
-
-main_func()
-
 
 
 
