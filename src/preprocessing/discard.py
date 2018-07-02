@@ -156,7 +156,7 @@ if __name__=='__main__':
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
     RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-    name = "football1_sm5"
+    name = "Football1_sm"
 
     data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
     class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
@@ -169,4 +169,4 @@ if __name__=='__main__':
     target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
 
     class_and_size_discard(data_file, class_filtered_file, masks_to_keep=['person'])
-    score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.98)], positions = {'y_min':150})
+    score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions = {'y_min':150})

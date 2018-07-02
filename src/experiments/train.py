@@ -13,6 +13,7 @@ sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 import torch
 import pickle
 import time
+import numpy as np
 import torch.optim as optim
 import torch.nn as nn
 
@@ -25,18 +26,19 @@ from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = 'cpu'
 print(device)
 
 
-data_names = ['Football1', 'Crossing1', 'Light1', 'Football2', 'Crossing2' ]
-#data_names = ['football1_sm5']
+#data_names = ['Football1', 'Crossing1', 'Light1', 'Football2', 'Crossing2' ]
+data_names = ['Football1_sm']
 
 for data_name in data_names:
     ###### PARAMETERS #######
     model_name = "Mask_only_Simple_Unet_{}".format(data_name)
-    num_epochs = 40
-    batch_size = 256
+    num_epochs = 2
+    batch_size = 4
     learning_rate = 0.01
     eval_percent = 0.1
 
@@ -64,13 +66,30 @@ for data_name in data_names:
                                                    ToTensor()
                                                   ]))
 
+
+
     val_set = DataFromH5py(dataset_file, idx_sets, purpose ='val',  transform = transforms.Compose([
                                                                        ResizeSample(),
                                                                        ToTensor()
                                                                       ]))
 
+    #Make a dataset with a subset of the training examples for evaluation
+    idx_set_eval = {'train': np.random.choice(idx_sets['train'], int(len(train_set)*eval_percent), replace=False)}
+    eval_train_set = DataFromH5py(dataset_file,idx_set_eval, transform = transforms.Compose([
+                                                   ResizeSample(),
+                                                   ToTensor()
+                                                  ]))
+
+
     train_dataloader = DataLoader(train_set, batch_size= batch_size,
                             shuffle=True)
+
+    val_dataloader = DataLoader(val_set, batch_size= batch_size,
+                            shuffle=True)
+
+    train_eval_dataloader = DataLoader(eval_train_set, batch_size= batch_size,
+                            shuffle=True)
+
 
 
 
@@ -114,37 +133,37 @@ for data_name in data_names:
             loss.backward()
             optimizer.step()
 
+        with torch.no_grad():
+            print("Finished training epoch {}".format(epoch))
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+            print("Evaluating...")
+            sys.stdout.flush()
 
-        print("Finished training epoch {}".format(epoch))
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
-        print("Evaluating...")
-        sys.stdout.flush()
+            #Evaluate Model
+            #Evaluate on Trainnig set
+            train_loss =  loss_metric.evaluate(model, criterion, train_eval_dataloader, device)
+            train_dist_mean = distance_via_mean.evaluate(model,train_eval_dataloader, device )
+            #train_dist_mode = distance_via_mode.evaluate(model,train_eval_dataloader, device)
 
-        #Evaluate Model
-        #Evaluate on Trainnig set
-        train_loss =  loss_metric.evaluate(model, criterion, train_set, device, eval_percent)
-        train_dist_mean = distance_via_mean.evaluate(model,train_set, device, eval_percent)
-        train_dist_mode = distance_via_mode.evaluate(model,train_set, device, eval_percent)
+            tracker.add(train_loss,'train_loss')
+            tracker.add(train_dist_mean,'train_dist_mean')
+            #tracker.add(train_dist_mode, 'train_dist_mode')
 
-        tracker.add(train_loss,'train_loss')
-        tracker.add(train_dist_mean,'train_dist_mean')
-        tracker.add(train_dist_mode, 'train_dist_mode')
+            #Evaluate on Valisation Set
+            val_loss = loss_metric.evaluate(model, criterion, val_dataloader, device)
+            val_dist_mean = distance_via_mean.evaluate(model,val_dataloader, device)
+            #val_dist_mode = distance_via_mode.evaluate(model,val_dataloader, device)
 
-        #Evaluate on Valisation Set
-        val_loss = loss_metric.evaluate(model, criterion, val_set, device)
-        val_dist_mean = distance_via_mean.evaluate(model,val_set, device)
-        val_dist_mode = distance_via_mode.evaluate(model,val_set, device)
+            tracker.add(val_loss,'val_loss')
+            tracker.add(val_dist_mean,'val_dist_mean')
+           # tracker.add(val_dist_mode, 'val_dist_mode')
 
-        tracker.add(val_loss,'val_loss')
-        tracker.add(val_dist_mean,'val_dist_mean')
-        tracker.add(val_dist_mode, 'val_dist_mode')
-
-        print('Train loss: {}'.format(train_loss))
-        print('Train dist mean: {}'.format(train_dist_mean))
-        print('Train dist mode: {}'.format(train_dist_mode))
-        print('Val loss: {}'.format(val_loss))
-        print('Val dist mean: {}'.format(val_dist_mean))
-        print('Val dist mode {}'.format(val_dist_mode))
+            print('Train loss: {}'.format(train_loss))
+            print('Train dist mean: {}'.format(train_dist_mean))
+            #print('Train dist mode: {}'.format(train_dist_mode))
+            print('Val loss: {}'.format(val_loss))
+            print('Val dist mean: {}'.format(val_dist_mean))
+            #print('Val dist mode {}'.format(val_dist_mode))
 
 
 

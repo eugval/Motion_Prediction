@@ -39,28 +39,27 @@ class DistanceViaMean(object):
 
         return dist
 
-    def evaluate(self, model, dataset,  device, eval_percent=1):
-        num_examples = int(len(dataset)*eval_percent)
-        indices = np.random.permutation(num_examples)
+    def evaluate(self, model, dataloader,  device):
 
+        num_examples = len(dataloader)
         tot_dist = 0.0
-        for idx in indices:
-            sample = dataset[idx]
-            input = sample['input'].float().to(device)
-            while (len(input.size()) < 4):
-                input= input.unsqueeze(0)
-            centroid = sample['future_centroid']
 
-            output = model(input)
+        for i, data in enumerate(dataloader):
+            inputs = data['input'].float().to(device)
+            centroids = data['future_centroid']
 
-            output = output.detach().cpu().numpy()
-            output = np.squeeze(output)
-            intial_h = dataset.initial_dims[0]
-            initial_w = dataset.initial_dims[1]
-            output = cv2.resize(output, (initial_w, intial_h))
+            outputs = model(inputs)
+
+            outputs = outputs.detach().cpu().numpy()
+            outputs = np.squeeze(outputs)
 
 
-            tot_dist += self.get_metric(output,centroid)
+            for i in range(outputs.shape[0]):
+                output = outputs[i,:,:]
+                intial_h = dataloader.dataset.initial_dims[0]
+                initial_w = dataloader.dataset.initial_dims[1]
+                output = cv2.resize(output, (initial_w, intial_h))
+                tot_dist += self.get_metric(output,centroids[i])
 
         return tot_dist / float(num_examples)
 
@@ -114,27 +113,19 @@ class DistanceViaMode(object):
 class LossMetric(object):
     name = 'loss'
 
-    def evaluate(self,model, criterion, dataset, device, eval_percent=1):
-        num_examples = int(len(dataset)*eval_percent)
-        indices = np.random.permutation(num_examples)
+    def evaluate(self,model, criterion, dataloader, device):
 
+        num_examples = len(dataloader)
         tot_loss = 0.0
-        for idx in indices:
-            sample = dataset[idx]
 
-            input = sample['input'].float().to(device)
-            label = sample['label'].float().to(device)
-            while (len(input.size()) < 4):
-                input= input.unsqueeze(0)
+        for i, data in enumerate(dataloader):
+            inputs = data['input'].float().to(device)
+            labels = data['label'].float().to(device)
+            labels = labels.unsqueeze(1)
 
-            while(len(label.size())<4):
-                label = label.unsqueeze(0)
+            outputs = model(inputs)
 
-            output = model(input)
-
-            tot_loss += criterion(output,label).item()
-
-
+            tot_loss += criterion(outputs, labels).item()
         return tot_loss / float(num_examples)
 
 
