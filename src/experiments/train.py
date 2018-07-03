@@ -21,7 +21,7 @@ from torchvision import transforms
 from torch.utils.data import  DataLoader
 
 from experiments.model import   SimpleUNet
-from experiments.history_tracking import DistanceViaMean, DistanceViaMode, LossMetric ,TrainingTracker
+from experiments.history_tracking import DistanceViaMean, DistanceViaMode, LossMetric ,TrainingTracker, IoUMetric
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 from deprecated.experiment import main_func
 
@@ -109,6 +109,8 @@ for data_name in data_names:
     distance_via_mean = DistanceViaMean()
     distance_via_mode = DistanceViaMode()
     tracker = TrainingTracker()
+    iou_bbox = IoUMetric(type = 'bbox')
+    iou_mask = IoUMetric(type = 'mask')
 
 
     print("Ready to train")
@@ -143,6 +145,8 @@ for data_name in data_names:
             #Evaluate on Trainnig set
             train_loss =  loss_metric.evaluate(model, criterion, train_eval_dataloader, device)
             train_dist_mean = distance_via_mean.evaluate(model,train_eval_dataloader, device )
+            train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device )
+            train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device )
             #train_dist_mode = distance_via_mode.evaluate(model,train_eval_dataloader, device)
 
             tracker.add(train_loss,'train_loss')
@@ -152,6 +156,8 @@ for data_name in data_names:
             #Evaluate on Valisation Set
             val_loss = loss_metric.evaluate(model, criterion, val_dataloader, device)
             val_dist_mean = distance_via_mean.evaluate(model,val_dataloader, device)
+            val_iou_bbox = iou_bbox.evaluate(model,val_dataloader, device )
+            val_iou_mask = iou_mask.evaluate(model,val_dataloader, device )
             #val_dist_mode = distance_via_mode.evaluate(model,val_dataloader, device)
 
             tracker.add(val_loss,'val_loss')

@@ -1,3 +1,17 @@
+import os
+import sys
+ROOT_DIR = os.path.abspath("../")
+PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
+MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
+
+
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+
+from preprocessing.tracking import iou
+
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -79,7 +93,7 @@ class MaskToMeasures(object):
         rmin, rmax, cmin, cmax = self.get_bbox_from_mask(mask)
         return int(rmin + (rmax-rmin)/2), int(cmin + (cmax-cmin)/2)
 
-
+#TODO vectorize this
 class IoUMetric(object):
     name = 'iou'
     types = ['bbox', 'mask']
@@ -99,9 +113,34 @@ class IoUMetric(object):
 
             return iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax])
         elif(self.type == 'mask'):
-            pass
+            if(not pred_mask.dtype == 'bool' or true_mask.dtype =='bool'):
+                pred_mask = pred_mask.astype('bool')
+                true_mask = true_mask.astype('bool')
+            intersection = pred_mask*true_mask
+            union = pred_mask + true_mask
 
+            return intersection.sum()/float(union.sum())
 
+    def evaluate(self, model, dataloader,  device):
+        num_examples = len(dataloader)
+        tot_iou = 0.0
+
+        for i, data in enumerate(dataloader):
+            inputs = data['input'].float().to(device)
+            labels = data['label'].float().to(device)
+
+            outputs = model(inputs)
+            outputs = outputs.detach().cpu().numpy()
+            outputs = np.squeeze(outputs)
+
+            labels = labels.detach().cpu().numpy()
+
+            for i in range(outputs.shape[0]):
+                    output = outputs[i,:,:]
+                    label = labels[i,:,:]
+                    tot_iou += self.get_metric(output,label)
+
+            return tot_iou / float(num_examples)
 
 
 
