@@ -66,6 +66,48 @@ class DistanceViaMean(object):
 
 
 
+class MaskToMeasures(object):
+    def get_bbox_from_mask(self, mask):
+        rows = np.any(mask, axis=1)
+        cols = np.any(mask, axis=0)
+        rmin, rmax = np.where(rows)[0][[0, -1]]
+        cmin, cmax = np.where(cols)[0][[0, -1]]
+
+        return rmin, rmax, cmin, cmax
+
+    def get_centroid_from_mask(self,mask):
+        rmin, rmax, cmin, cmax = self.get_bbox_from_mask(mask)
+        return int(rmin + (rmax-rmin)/2), int(cmin + (cmax-cmin)/2)
+
+
+class IoUMetric(object):
+    name = 'iou'
+    types = ['bbox', 'mask']
+
+    def __init__(self, type):
+        if(type not in  self.types):
+            raise ValueError("IoU only works with masks and bounding boxes")
+        self.type = type
+
+        if(type == 'bbox'):
+            self.boxMaker = MaskToMeasures()
+
+    def get_metric(self, pred_mask, true_mask):
+        if(self.type == 'bbox'):
+            p_rmin, p_rmax, p_cmin, p_cmax = self.boxMaker.get_bbox_from_mask(pred_mask)
+            t_rmin, t_rmax, t_cmin, t_cmax = self.boxMaker.get_bbox_from_mask(true_mask)
+
+            return iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax])
+        elif(self.type == 'mask'):
+            pass
+
+
+
+
+
+
+
+
 class DistanceViaMode(object):
     name = 'dist_via_mode'
 
