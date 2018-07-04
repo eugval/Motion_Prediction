@@ -106,15 +106,15 @@ for data_name in data_names:
         number_of_plots = 11
 
         plt.subplot2grid((4,3),(0,0))
-        plt.imshow(input_raw[3])
+        plt.imshow(input_raw[0])
         plt.title("Mask time t")
         plt.subplot2grid((4,3),(0,1))
-        plt.imshow(input_raw[4])
+        plt.imshow(input_raw[1])
         plt.title("mask at  t+2")
 
 
         plt.subplot2grid((4,3),(0,2))
-        plt.imshow(input_raw[5])
+        plt.imshow(input_raw[2])
         plt.title("mask at  t+4")
         plt.scatter(*zip(centroid_list[0]), marker = '+')
 
