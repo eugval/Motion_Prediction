@@ -53,10 +53,12 @@ class TrainingTracker(object):
         i = 1
         for k, v in self.metrics.items():
             plt.subplot(int(number_of_plots/2), 2, i)
-            plt.plot(v)
-            plt.xlabel("Epochs")
+            x_ticks = np.arange(len(v)) * self.iterations_per_epoch
+            plt.plot(x_ticks, v)
+            plt.xlabel("Iterations (no of batches)")
             plt.ylabel(k)
-            plt.title(k + " vs Epoch Number")
+            plt.title(k + " vs number of iterations")
+
             i += 1
 
         plt.tight_layout()
@@ -67,11 +69,11 @@ class TrainingTracker(object):
             plt.show()
 
 
-if __name__ == '__name__':
+if __name__ == '__main__':
 
-    save = False
+    save = True
 
-    data_name = 'Football1_sm'
+    data_name = 'Football2_1person'
     model_name = "Unet_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
@@ -81,7 +83,12 @@ if __name__ == '__name__':
 
     training_tracker = pickle.load(open(model_history_file, "rb"))
 
+    tracker2 = TrainingTracker(training_tracker.iterations_per_epoch)
+    tracker2.metrics = training_tracker.metrics
+
+
+
     if(save ==True):
-        training_tracker.plot_all(plot_save_file)
+        tracker2.plot_all(plot_save_file)
     else:
-        training_tracker.plot_all()
+        tracker2.plot_all()
