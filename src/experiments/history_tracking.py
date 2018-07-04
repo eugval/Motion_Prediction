@@ -10,11 +10,13 @@ sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 
+
 from preprocessing.tracking import iou
 
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import torch
 
 
 class CentroidCalculator(object):
@@ -60,12 +62,12 @@ class DistanceViaMean(object):
 
         for i, data in enumerate(dataloader):
             inputs = data['input'].float().to(device)
-            centroids = data['future_centroid']
+            centroids = data['future_centroid'].detach().numpy()
 
             outputs = model(inputs)
-
+            outputs = torch.squeeze(outputs,1)
             outputs = outputs.detach().cpu().numpy()
-            outputs = np.squeeze(outputs)
+
 
 
             for i in range(outputs.shape[0]):
@@ -121,7 +123,7 @@ class IoUMetric(object):
 
             return intersection.sum()/float(union.sum())
 
-    def evaluate(self, model, dataloader,  device):
+    def evaluate(self, model, dataloader,  device, threshold = 0.5):
         num_examples = len(dataloader)
         tot_iou = 0.0
 
@@ -130,10 +132,12 @@ class IoUMetric(object):
             labels = data['label'].float().to(device)
 
             outputs = model(inputs)
+            outputs = torch.squeeze(outputs, 1)
             outputs = outputs.detach().cpu().numpy()
-            outputs = np.squeeze(outputs)
+
 
             labels = labels.detach().cpu().numpy()
+            outputs = outputs>0.5
 
             for i in range(outputs.shape[0]):
                     output = outputs[i,:,:]

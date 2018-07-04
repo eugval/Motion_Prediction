@@ -32,7 +32,7 @@ print(device)
 
 
 #data_names = ['Football1', 'Crossing1', 'Light1', 'Football2', 'Crossing2' ]
-data_names = ['Football1_sm']
+data_names = ['Football1_sm5']
 
 for data_name in data_names:
     ###### PARAMETERS #######

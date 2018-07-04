@@ -67,7 +67,7 @@ for name, config in names:
         class_and_size_discard(data_file,tracked_file, small_threshold = 20)
     elif(config==2):
         class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
-        score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.985)], positions={'y_min': 150})
+        score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 150})
 
 
     print("--- %s seconds elapsed ---" % (time.time() - start_time))
