@@ -10,6 +10,8 @@
 *.pickle
 *.pkl
 
+log.txt
+
 #Compressed data files should not be uploaded
 *.zip
 

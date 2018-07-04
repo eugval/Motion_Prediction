@@ -7,7 +7,7 @@ import torch
 class DataFromH5py(Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["images","masks"], label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
+    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["masks"], label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
         #Data and data manipulations
         self.f = h5py.File(file_path, "r")
         self.transform = transform

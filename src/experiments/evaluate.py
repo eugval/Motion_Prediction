@@ -20,7 +20,7 @@ import pickle
 
 from torchvision import transforms
 from experiments.model import   SimpleUNet
-from experiments.history_tracking import DistanceViaMean, DistanceViaMode
+from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
 
 

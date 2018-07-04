@@ -91,7 +91,7 @@ def get_mask_stats(file,class_filtered_indices, threshold, verbose =0):
 
 
 
-def class_and_size_discard(data_file,target_file, masks_to_keep = ['car','truck'], small_threshold = -1, verbose=0):
+def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small_threshold = -1, verbose=0):
     f = h5py.File(data_file, "r")
     cls_names = f["class_names"]
 

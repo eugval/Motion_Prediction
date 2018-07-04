@@ -7,6 +7,7 @@ sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 import matplotlib
 matplotlib.use('Agg')
 
+import h5py
 from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , generate_image_dir_path
 
 from preprocessing.tracking import  track, consolidate_indices, visualise_tracks, iou_track
@@ -14,7 +15,7 @@ from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
 
-from preprocessing.make_dataset import make_dataset
+from preprocessing.make_dataset import make_dataset,make_train_test_split,make_val_set
 from preprocessing.resize_data import resize_data
 import time
 
@@ -27,11 +28,21 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [  ("Crossing2",1),("Football1",2), ("Football2",2),("Football1_sm",2)]
-#("30SLight1",1),("Light1",1), ("Light2",1),("Crossing1",1),
+names = [ ("Crossing1",1)]
+detecting = False
+discarding = True
+tracking = True
+resizing = True
+make_gaussians = True
+dataset = True
+make_idx = True
+mask_vis = True
+gauss_vis = False
+
 
 start_time = time.time()
-#Run the MaskRcnn
+
+
 for name, config in names:
     print("dealing with {} ...".format(name))
     #Directory to fetch the raw images
@@ -41,8 +52,9 @@ for name, config in names:
     processed_dir_name = name
     processed_dir = generate_save_dir_path(processed_dir_name)
 
-    if not os.path.exists(processed_dir):
-        os.makedirs(processed_dir)
+    if(detecting):
+        if not os.path.exists(processed_dir):
+            os.makedirs(processed_dir)
 
 
     #Files and folders in the processed directory
@@ -52,70 +64,82 @@ for name, config in names:
     tracked_file = os.path.join(PROCESSED_PATH, "{}/{}_tracked.hdf5".format(name,name))
     resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name,name))
+    set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name,name))
     target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
     target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
 
-    print("Detecting...")
-    run_mask_rcnn(detected_file,
-                  processed_dir,
-                  generate_image_dir_path(raw_dir_name), save_images=True)
-
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
-
-    print("Discarding Masks...")
-    if(config==1):
-        class_and_size_discard(data_file,tracked_file, small_threshold = 20)
-    elif(config==2):
-        class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
-        score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 150})
-
-
-    print("--- %s seconds elapsed ---" % (time.time() - start_time))
-
-    print("Tracking...")
-    if (config == 1):
-        track(tracked_file)
+    if (detecting):
+        print("Detecting...")
+        run_mask_rcnn(detected_file,
+                      processed_dir,
+                      generate_image_dir_path(raw_dir_name), save_images=True)
 
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-        print("Tracking reverse...")
-        track(tracked_file, reverse=True)
+    if(discarding):
+        print("Discarding Masks...")
+        if(config == 1):
+            class_and_size_discard(data_file,tracked_file, small_threshold = 20)
+        elif(config==2):
+            class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
+            score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 225})
 
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-        print("Consolidating...")
-        consolidate_indices(tracked_file)
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
+    if(tracking):
+        print("Tracking...")
+        if (config == 1):
+            track(tracked_file)
+
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
+            print("Tracking reverse...")
+            track(tracked_file, reverse=True)
+
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
+            print("Consolidating...")
+            consolidate_indices(tracked_file)
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
 
-    elif(config==2):
-        iou_track(tracked_file)
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        elif(config==2):
+            iou_track(tracked_file)
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
 
-    if(config == 1 or config == 2 ):
+    if(resizing):
         print("Resizing...")
-        resize_data(tracked_file, resized_file, 256, 314, maintain_ratio=True)
+        resize_data(tracked_file, resized_file, 256, 512, maintain_ratio=True)
+    else:
+        if not os.path.exists(resized_file):
+            resized_file = tracked_file
+    print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
-
+    if(make_gaussians):
         print("Making gaussian masks...")
         make_gaussian_masks(resized_file)
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))#
 
+    if(dataset):
         print("Making the dataset...")
         make_dataset(resized_file, dataset_file)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
+        f = h5py.File(dataset_file, "r")
+        dataset_size = f['datapoints'].value[0]
+        f.close()
+        idx_sets = make_train_test_split(dataset_size, 0.1)
+        make_val_set(idx_sets,0.1,save_path = set_idx_file)
+
+
+    if(mask_vis):
         print("Making Visualisation...")
         visualise_tracks(resized_file, target_folder_consolidated, id_idx = 0)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
+
+    if(gauss_vis):
         print("Making Gaussian Visualisation...")
         visualise_gaussians(resized_file,target_folder_gauss)
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
-
-    elif(config==3):
-        print("Making Gaussian Visualisation...")
-        visualise_gaussians(resized_file, target_folder_gauss, verbose =0)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
