@@ -67,12 +67,14 @@ for data_name in data_names:
     while (len(input.size()) < 4):
         input = input.unsqueeze(0)
 
-    output = model(input)
+    output = model.eval_forward(input)
     output = output.detach().cpu().numpy()
     output = np.squeeze(output)
     initial_dims = (dataset.initial_dims[1], dataset.initial_dims[0])
     #initial_dims = dataset.initial_dims
     output_initial_dims = cv2.resize(output,initial_dims )
+    output_initial_dims = output_initial_dims>0.5
+    output_after_thresh = output > 0.5
 
 
 
@@ -116,7 +118,6 @@ for data_name in data_names:
         plt.subplot2grid((4,3),(0,2))
         plt.imshow(input_raw[2])
         plt.title("mask at  t+4")
-        plt.scatter(*zip(centroid_list[0]), marker = '+')
 
         plt.subplot2grid((4, 3), (1, 0))
         plt.imshow(label_raw)
@@ -124,15 +125,15 @@ for data_name in data_names:
         plt.scatter(*zip(centroid_list[0]), marker='+')
 
 
-        plt.subplot2grid((4,3),(1,1))
-        plt.imshow(label)
-        plt.title("resized label")
+
 
         plt.subplot2grid((4,3),(1,2))
         plt.imshow(output)
         plt.title("direct output")
 
-
+        plt.subplot2grid((4,3),(1,1))
+        plt.imshow(output_after_thresh)
+        plt.title("Thresholded output at 0.5")
 
         plt.subplot2grid((4,3),(2,0), rowspan=2, colspan=3  )
         plt.scatter(*zip(*centroid_list))
