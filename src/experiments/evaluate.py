@@ -48,7 +48,7 @@ for data_name in data_names:
 
 
 
-    model = Unet(4)
+    model = Unet(3)
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
 
     model.to(device)
