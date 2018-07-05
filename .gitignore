@@ -10,7 +10,7 @@
 *.pickle
 *.pkl
 
-log.txt
+*.txt
 
 #Compressed data files should not be uploaded
 *.zip
@@ -24,3 +24,7 @@ logs/
 Mask_RCNN/
 sort/
 .idea
+
+# DO NOT ignore these files
+
+!Requirements.txt

@@ -37,11 +37,17 @@ data_names = ['Football2_1person']
 
 for data_name in data_names:
     ###### PARAMETERS #######
-    model_name = "Unet_{}".format(data_name)
-    num_epochs = 50
+    model_name = "Unet_MI_{}".format(data_name)
+    num_epochs = 150
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
+
+    input_types = ['masks','images']
+    number_of_inputs = 12
+
+
+    eval_batch_size = 128
 
 
 
@@ -62,21 +68,21 @@ for data_name in data_names:
     ###### Grab the data #####
     idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
 
-    train_set = DataFromH5py(dataset_file,idx_sets, transform = transforms.Compose([
+    train_set = DataFromH5py(dataset_file,idx_sets,input_type = input_types, transform = transforms.Compose([
                                                    ResizeSample(),
                                                    ToTensor()
                                                   ]))
 
 
 
-    val_set = DataFromH5py(dataset_file, idx_sets, purpose ='val',  transform = transforms.Compose([
+    val_set = DataFromH5py(dataset_file, idx_sets, input_type = input_types,purpose ='val',  transform = transforms.Compose([
                                                                        ResizeSample(),
                                                                        ToTensor()
                                                                       ]))
 
     #Make a dataset with a subset of the training examples for evaluation
     idx_set_eval = {'train': np.random.choice(idx_sets['train'], int(len(train_set)*eval_percent), replace=False)}
-    eval_train_set = DataFromH5py(dataset_file,idx_set_eval, transform = transforms.Compose([
+    eval_train_set = DataFromH5py(dataset_file,idx_set_eval, input_type = input_types,transform = transforms.Compose([
                                                    ResizeSample(),
                                                    ToTensor()
                                                   ]))
@@ -95,7 +101,7 @@ for data_name in data_names:
 
 
     ###### Define the Model ####
-    model = Unet(3)
+    model = Unet(number_of_inputs)
     model.to(device)
     print(model)
 

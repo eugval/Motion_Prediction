@@ -141,7 +141,6 @@ class DistanceViaMode(object):
 class IoUMetric(object):
     name = 'iou'
     types = ['bbox', 'mask']
-
     def __init__(self, type):
         if(type not in  self.types):
             raise ValueError("IoU only works with masks and bounding boxes")
@@ -201,8 +200,6 @@ class LossMetric(object):
     name = 'loss'
 
     def evaluate(self,model, criterion, dataloader, device):
-
-
         tot_loss = 0.0
         count = 0
         for i, data in enumerate(dataloader):
