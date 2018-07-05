@@ -29,15 +29,16 @@ from matplotlib.offsetbox import AnchoredText
 
 device = torch.device("cpu")
 
-input_type = 'masks'
-
+input_type = 'images'
+input_types = ['masks','images']
 
 data_names =["Football2_1person"]
+trial = 3
 
 for data_name in data_names:
     print("Doing {}".format(data_name))
 
-    model_name = "Unet_{}".format(data_name)
+    model_name = "Unet_MI_{}".format(data_name)
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name,model_name))
 
@@ -45,16 +46,16 @@ for data_name in data_names:
     idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
 
 
+    save_path = os.path.join(model_folder,'qualitative_{}'.format(trial))
 
 
-
-    model = Unet(3)
+    model = Unet(12)
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
 
     model.to(device)
 
     idx_sets = pickle.load(open(idx_sets_file, "rb"))
-    dataset = DataFromH5py(dataset_file,idx_sets,purpose ='val', transform = transforms.Compose([
+    dataset = DataFromH5py(dataset_file,idx_sets,input_type = input_types,purpose ='val', transform = transforms.Compose([
                                                        ResizeSample(),
                                                        ToTensor()
                                                       ]))
@@ -127,13 +128,13 @@ for data_name in data_names:
 
 
 
-        plt.subplot2grid((4,3),(1,2))
+        plt.subplot2grid((4,3),(1,1))
         plt.imshow(output)
         plt.title("direct output")
 
-        plt.subplot2grid((4,3),(1,1))
-        plt.imshow(output_after_thresh)
-        plt.title("Thresholded output at 0.5")
+        plt.subplot2grid((4,3),(1,2))
+        plt.imshow(output_initial_dims)
+        plt.title("Thresholded and resized output at 0.5")
 
         plt.subplot2grid((4,3),(2,0), rowspan=2, colspan=3  )
         plt.scatter(*zip(*centroid_list))
@@ -194,12 +195,18 @@ for data_name in data_names:
         plt.imshow(label)
         plt.title("resized label")
 
-        plt.subplot2grid((4, 3), (1, 1))
+
+
+
+
+        plt.subplot2grid((4,3),(1,1))
         plt.imshow(output)
         plt.title("direct output")
-        plt.subplot2grid((4, 3), (1, 2))
+
+        plt.subplot2grid((4,3),(1,2))
         plt.imshow(output_initial_dims)
-        plt.title("resized output")
+        plt.title("Thresholded and resized output at 0.5")
+
 
         plt.subplot2grid((4, 3), (2, 0), rowspan=2, colspan=3)
         plt.scatter(*zip(*centroid_list))
@@ -231,5 +238,5 @@ for data_name in data_names:
         plt.title("centroids")
 
         plt.tight_layout()
-        plt.savefig(model_folder + "img")
+        plt.savefig(save_path)
         print("done")

@@ -23,40 +23,51 @@ def get_idx_from_id(idx,file,frame_num,id_idx=0):
 
 
 def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index):
+
+    #Add the frame that corresponds to that datapoint at time t
     f2.create_dataset("datapoint{}/origin_frame".format(datapoint_index), data=[i])
 
+    #Add the mask id that corresponds to that datapoint
     f2.create_dataset('datapoint{}/mask_id'.format(datapoint_index), data=[id])
+
     images = []
     masks = []
     delta_masks = []
     centroids = []
 
+    #Grap the  inputs
     for j in range(number_inputs):
 
-        frame_number = i + int(j*timestep)
+        #Grab the frame for a previous time input
+        frame_number = i - int(j*timestep)
         origin_frame = 'frame{}'.format(frame_number)
         origin = f[origin_frame]
 
+        #Grab the image from that frame
         images.append(origin['image'].value)
 
-
+        #Gran the mask of the id for the datapoint
         mask_idx = get_idx_from_id(id,f,frame_number)
         mask = origin['masks'].value[:,:,mask_idx]
-
         masks.append(mask)
-        delta_masks.append(mask.astype(int) - masks[0].astype(int))
+
+        #Get the centroid of the mask
         centroids.append(origin['centroids'].value[mask_idx, :])
 
-    frame_number= i+int(future_time-1)
+        #Get tge delta_masks
+        delta_masks.append(masks[0].astype(int)- mask.astype(int))
+
+    #Grab the future frame
+    frame_number = i+int(future_time)
     mask_idx = get_idx_from_id(id,f,frame_number)
     gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
     future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,mask_idx]
     future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[mask_idx,:]
 
-    #images = np.dstack(images)
+    #prepare the data as np arrays for hdf5
     images = np.stack(images, axis=3)
     masks = np.dstack(masks)
-    delta_masks=np.dstack(delta_masks)
+    delta_masks = np.dstack(delta_masks)
     centroids = np.stack(centroids,axis = 0)
 
     f2.create_dataset('datapoint{}/images'.format(datapoint_index),data=images)
@@ -70,12 +81,14 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
 
 
 def check_id_consistency(f,id,frame_idx, timestep, number_inputs, future_time):
-    future_frame = frame_idx + future_time - 1
+    future_frame = frame_idx + future_time
+    #If the id is not in the future frame return False
     if (id  not in f['frame{}'.format(future_frame)]['IDs'].value[:, 0]):
         return False
 
+    #If the complementary previous times do not have that ID return False
     for j in range(number_inputs):
-        frame_number = frame_idx + int(j * timestep)
+        frame_number = frame_idx - int(j * timestep)
         if(id  not in f['frame{}'.format(frame_number)]['IDs'].value[:, 0]):
             return False
 
@@ -90,7 +103,7 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
     f2.create_dataset("number_inputs", data=[number_inputs])
     f2.create_dataset("future_time", data=[future_time])
 
-    assert number_inputs*timestep< future_time-1
+    assert number_inputs*timestep< future_time-1 #take out
 
     max_frames =  f['frame_number'].value[0]
     start_count = find_start_count(list(f.keys()))
@@ -104,15 +117,20 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
         id_list = []
         for id, id_2 in f[frame]['IDs']:
 
-            future_frame = i + future_time #Was -1 for first gen of data
+            #Check that the frame at t - timestep*(num_inputs-1) exists
+            if(i-int(timestep*(number_inputs-1))<0):
+                continue
+
+            #Check that the future frame exists
+            future_frame = i + future_time
             if(future_frame > max_frames-1):
                 break
 
-
+            #Add the ids of that frame that have previous and future frames with the same id
             if (check_id_consistency(f,id,i,timestep,number_inputs,future_time)):
                 id_list.append(id)
 
-
+        #Add the datapoint
         if(len(id_list)>0):
             for id in id_list:
                 add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
@@ -120,64 +138,6 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
 
     f2.create_dataset("datapoints", data = [datapoint_index])
 
-
-
-
-
-
-def make_train_test_split(dataset_size, test_frac, save_path = False):
-    dataset_idx = np.random.permutation(dataset_size)
-
-    testset_size = int(test_frac * dataset_size)
-
-    test_idx, train_idx = dataset_idx[:testset_size], dataset_idx[testset_size:]
-
-    idx_sets = {'test': test_idx, 'train': train_idx, 'val': np.array([])}
-
-    if(save_path):
-        pickle.dump(idx_sets, open(save_path, "wb"))
-
-
-    return idx_sets
-
-
-def make_val_set(idx_sets, val_frac, save_path = False):
-    full_train = np.concatenate([idx_sets['train'],idx_sets['val']]).astype('int')
-
-    np.random.shuffle(full_train)
-
-    val_size = int(val_frac * full_train.shape[0])
-
-    val_idx, train_idx = full_train[:val_size], full_train[val_size:]
-
-    new_set = {'test': idx_sets['test'], 'train': train_idx, 'val': val_idx}
-    if (save_path):
-        pickle.dump(new_set, open(save_path, "wb"))
-
-    return new_set
-
-
-
-
-
-#TODO: Finish that funciton
-def convert_to_folder_structure(data_file, target_folder):
-    if not os.path.exists(target_folder):
-        os.makedirs(target_folder)
-
-    f = h5py.File(data_file, "r")
-
-    #TODO: Make a non-hardcoded implementation
-
-    metadata = {'datapoints': f['datapoints'].value[0],
-                'future_time': f['future_time'].value[0],
-                'number_inputs':f['number_inputs'].value[0],
-                'origin_file':f['origin_file'].value[0],
-                'timestep':f['timestep'].value[0] }
-
-
-    for i in range(f['datapoints'].value[0]):
-        pass
 
 
 
@@ -271,7 +231,7 @@ def visualise_dataset_labels(data_file,target_file=False,idx=1, new_gen = True):
 if __name__ == "__main__":
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 
-    make_split = False
+
     make_dataset= False
     visualise_dataset = True
 
@@ -301,13 +261,6 @@ if __name__ == "__main__":
 
         if(make_dataset):
             make_dataset(resized_file, dataset_file)
-
-        if(make_split):
-            f = h5py.File(dataset_file, "r")
-            dataset_size = f['datapoints'].value[0]
-            f.close()
-            idx_sets = make_train_test_split(dataset_size, 0.1)
-            idx_sets = make_val_set(idx_sets, 0.1, save_path=set_idx_file)
 
         if(visualise_dataset):
             visualise_dataset_inputs(dataset_file,input_vis_file )

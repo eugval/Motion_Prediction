@@ -38,7 +38,7 @@ data_names = ['Football2_1person']
 for data_name in data_names:
     ###### PARAMETERS #######
     model_name = "Unet_MI_{}".format(data_name)
-    num_epochs = 150
+    num_epochs = 200
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
@@ -177,12 +177,13 @@ for data_name in data_names:
         print("Finished Evaluating Epoch {}".format(epoch))
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-        print("Finished Training, saving model and  training tracker...")
+        print("Finished Training, saving model...")
         sys.stdout.flush()
         torch.save(model.state_dict(), model_file)
 
+    print('Saving training tracker....')
     pickle.dump(tracker, open(model_history_file, "wb"))
-
+    print('Finished all')
 
 
 
