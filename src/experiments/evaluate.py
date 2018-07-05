@@ -29,16 +29,17 @@ from matplotlib.offsetbox import AnchoredText
 
 device = torch.device("cpu")
 
-input_type = 'images'
-input_types = ['masks','images']
+input_type = 'masks'
+input_types = ['masks']
 
 data_names =["Football2_1person"]
 trial = 3
+input_num = 3
 
 for data_name in data_names:
     print("Doing {}".format(data_name))
 
-    model_name = "Unet_MI_{}".format(data_name)
+    model_name = "Unet_M_{}".format(data_name)
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name,model_name))
 
@@ -49,7 +50,7 @@ for data_name in data_names:
     save_path = os.path.join(model_folder,'qualitative_{}'.format(trial))
 
 
-    model = Unet(12)
+    model = Unet(input_num)
     model.load_state_dict(torch.load(model_file, map_location='cpu'))
 
     model.to(device)
@@ -171,7 +172,7 @@ for data_name in data_names:
         plt.title("centroids")
 
         plt.tight_layout()
-        plt.savefig(model_folder+"img")
+        plt.savefig(save_path)
         print("done")
     else:
 

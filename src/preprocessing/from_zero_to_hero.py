@@ -16,7 +16,7 @@ from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
 
 from preprocessing.make_dataset import make_dataset
-from preprocessing.manipulate_datasets import make_train_test_split,make_val_set
+from preprocessing.manipulate_dataset import make_train_test_split,make_val_set
 from preprocessing.resize_data import resize_data
 import time
 
