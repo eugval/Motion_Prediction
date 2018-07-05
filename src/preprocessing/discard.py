@@ -91,7 +91,16 @@ def get_mask_stats(file,class_filtered_indices, threshold, verbose =0):
 
 
 
-def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small_threshold = -1, verbose=0):
+def get_mask_stats_local(frame,class_filtered_indices, threshold, verbose =0):
+    mask_list = []
+    for mask_idx in class_filtered_indices:
+        mask_area = np.sum(frame["masks"].value[:, :, mask_idx])
+        mask_list.append(mask_area)
+    if verbose == 2: print(mask_list)
+    return np.mean(mask_list), np.std(mask_list), np.percentile(mask_list,threshold)
+
+
+def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small_threshold = -1, global_stats = True, verbose=0):
     f = h5py.File(data_file, "r")
     cls_names = f["class_names"]
 
@@ -105,15 +114,23 @@ def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small
     frame_indices = range(start_count, f['frame_number'].value[0])
 
     class_filtered_indices = []
+    frame_percentile = []
     if(start_count == 1):
         class_filtered_indices.append(None)
+        frame_percentile.append(None)
 
     for i in frame_indices :
         frame = "frame{}".format(i)
-        class_filtered_indices.append(np.where(np.isin(f[frame]['class_ids'].value, mask_ids))[0])
+        class_indices = np.where(np.isin(f[frame]['class_ids'].value, mask_ids))[0]
+        class_filtered_indices.append(class_indices)
 
-    if (small_threshold > 0):
+        if(not global_stats and small_threshold >0):
+            mean, std, percentile = get_mask_stats_local(f[frame],class_indices, small_threshold, verbose)
+            frame_percentile.append(percentile)
+
+    if (small_threshold > 0 and global_stats):
         mean, std, percentile = get_mask_stats(f,class_filtered_indices, small_threshold, verbose)
+        frame_percentile = [percentile]*len(class_filtered_indices)
         if verbose == 1: print("mean area : {}, std aread : {}, percentile {}".format(mean, std, percentile))
 
     f2 = h5py.File(target_file, "w")
@@ -126,7 +143,7 @@ def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small
         if (small_threshold > 0):
             relevant_masks = []
             for mask_id in class_filtered_indices[i]:
-                if (np.sum(f[frame]["masks"].value[:, :, mask_id]) > percentile):
+                if (np.sum(f[frame]["masks"].value[:, :, mask_id]) > frame_percentile[i]):
                     relevant_masks.append(mask_id)
                 elif(verbose==1):
                     print("Discarding mask with area {}".format(np.sum(f[frame]["masks"].value[:, :, mask_id])))

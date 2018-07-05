@@ -28,15 +28,15 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Crossing1",1)]
-detecting = False
-discarding = True
-tracking = True
-resizing = True
-make_gaussians = True
-dataset = True
-make_idx = True
-mask_vis = True
+names = [ ("Crossing2_sm",1)]
+detecting = True
+discarding = False
+tracking = False
+resizing = False
+make_gaussians = False
+dataset = False
+make_idx = False
+mask_vis = False
 gauss_vis = False
 
 
