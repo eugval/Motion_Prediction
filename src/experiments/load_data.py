@@ -119,7 +119,7 @@ class ResizeSample(object):
         new_sample = sample
 
         input = cv2.resize(input, (self.w, self.h))
-        label = cv2.resize(label, (self.w, self.h))
+        label = cv2.resize(label, (self.w, self.h),interpolation=cv2.INTER_NEAREST)
 
         new_sample['input'] = input
         new_sample['label'] = label

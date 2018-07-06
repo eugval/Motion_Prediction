@@ -11,38 +11,133 @@ from preprocessing.utils import find_start_count
 
 
 
-def make_train_test_split(dataset_size, test_frac, save_path = False):
-    dataset_idx = np.random.permutation(dataset_size)
 
-    testset_size = int(test_frac * dataset_size)
+class MakeDataSplits(object):
+    def __init__(self, dataset_file_path, frames_file_path):
+        self.idx_sets = {'train':np.array([]),
+                         'test': np.array([]),
+                         'val': np.array([]),
+                         }
 
-    test_idx, train_idx = dataset_idx[:testset_size], dataset_idx[testset_size:]
+        self.split_method = 'frame'
 
-    idx_sets = {'test': test_idx, 'train': train_idx, 'val': np.array([])}
+        self.dataset_file_path = dataset_file_path
+        self.frames_file_path = frames_file_path
 
-    if(save_path):
-        pickle.dump(idx_sets, open(save_path, "wb"))
-
-
-    return idx_sets
-
-
-def make_val_set(idx_sets, val_frac, save_path = False):
-    full_train = np.concatenate([idx_sets['train'],idx_sets['val']]).astype('int')
-
-    np.random.shuffle(full_train)
-
-    val_size = int(val_frac * full_train.shape[0])
-
-    val_idx, train_idx = full_train[:val_size], full_train[val_size:]
-
-    new_set = {'test': idx_sets['test'], 'train': train_idx, 'val': val_idx}
-    if (save_path):
-        pickle.dump(new_set, open(save_path, "wb"))
-
-    return new_set
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        self.test_split_datapoint = f_dset['datapoints'].value[0] - 1
+        f_dset.close()
 
 
+    def save_idx_sets(self, save_path):
+        pickle.dump(self.idx_sets, open(save_path, "wb"))
+
+    def get_idx_sets(self):
+        return self.idx_sets
+
+    def reset(self):
+        self.idx_sets = {'train': np.array([]),
+                         'test': np.array([]),
+                         'val': np.array([]),
+                         }
+
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        self.test_split_datapoint = f_dset['datapoints'].value[0] - 1
+        f_dset.close()
+
+
+    def make_frame_split(self, split_type, frac,
+                         save_path = False, discard_input_overlap = False ): #discard input overlap not tested
+
+        if(self.split_method != 'frame'):
+            self.split_method = 'frame'
+            self.reset()
+
+        #Open the file containing the datapoints and frames
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        f_fset = h5py.File(self.frames_file_path, 'r')
+
+        timestep = f_dset['timestep'].value[0]
+        number_of_inputs = f_dset['number_inputs'].value[0]
+        dataset_size = f_dset['datapoints'].value[0]
+
+
+
+        if(split_type == 'test'):
+            #reset the test split datapoint, reset the validation set and set the iteration to the whole dataset
+            split_datapoint = dataset_size - int(frac * dataset_size) - 1
+            self.test_split_datapoint = split_datapoint
+
+            self.idx_sets['val'] = np.array([])
+
+
+            iteration = range(f_dset['datapoints'].value[0])
+
+        elif(split_type == 'val'):
+            #Use the previous training and validation sets as the iteration
+            iteration = np.concatenate([self.idx_sets['train'], self.idx_sets['val']]).astype('int')
+            #set the splitting datapoint
+            split_datapoint = self.test_split_datapoint - int(frac * dataset_size)
+
+
+
+        if(split_datapoint < 0):
+            splitting_frame = -1
+        else:
+            splitting_frame = f_dset['datapoint{}'.format(split_datapoint)]['origin_frame'].value[0]
+
+        split_idx = []
+        train_idx = []
+        for i in iteration:
+            #fetch datapoint
+            datapoint = 'datapoint{}'.format(i)
+            origin_frame = f_dset[datapoint]['origin_frame'].value[0]
+            #If it comes from a frame higher than the split
+            if origin_frame > splitting_frame:
+                #put it on the split set
+                split_idx.append(i)
+            elif (discard_input_overlap and origin_frame >= (splitting_frame - int(timestep * number_of_inputs))):
+                #If we want a buffer to avoid overlapping inputs discard some frames
+                continue
+            else:
+                #dd the rest to the training set
+                train_idx.append(i)
+
+        #Updtate the split sets
+        self.idx_sets['train'] = np.array(train_idx)
+        self.idx_sets[split_type] = np.array(split_idx)
+
+        #save and return
+        if(save_path):
+            self.save_idx_sets(save_path)
+
+        return self.idx_sets
+
+    def make_random_split(self,  split_type,  frac, save_path = False):
+        if (self.split_method != 'random'):
+            self.split_method = 'random'
+            self.reset()
+
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        dataset_size = f_dset['datapoints'].value[0]
+        split_size = int(frac * dataset_size)
+
+        if(split_type == 'test'):
+            self.idx_sets['val'] = np.array([])
+            dataset_idx = np.random.permutation(dataset_size)
+        elif(split_type == 'val'):
+            dataset_idx = np.concatenate([self.idx_sets['train'], self.idx_sets['val']]).astype('int')
+            np.random.shuffle(dataset_idx)
+
+        split_idx, train_idx = dataset_idx[:split_size], dataset_idx[split_size:]
+
+        self.idx_sets['train'] = np.array(train_idx)
+        self.idx_sets[split_type] = np.array(split_idx)
+
+        if (save_path):
+            self.save_idx_sets(save_path)
+
+        return self.idx_sets
 
 
 
@@ -164,15 +259,14 @@ if __name__=='__main__':
 
     #names = [('Football1_sm5',1)]
     for name, config in names:
+        resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
         dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
         set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
 
         if(make_split):
-            f = h5py.File(dataset_file, "r")
-            dataset_size = f['datapoints'].value[0]
-            f.close()
-            idx_sets = make_train_test_split(dataset_size, 0.1)
-            idx_sets = make_val_set(idx_sets, 0.1, save_path=set_idx_file)
+            data_splitter = MakeDataSplits()
+            data_splitter.make_frame_split(dataset_file,resized_file,'test', 0)
+            data_splitter.make_frame_split(dataset_file, resized_file, 'val', 0.1, set_idx_file)
 
 
     if(merge):

@@ -87,7 +87,7 @@ class DistanceViaMean(object):
                 output = outputs[i,:,:]
                 intial_h = dataloader.dataset.initial_dims[0]
                 initial_w = dataloader.dataset.initial_dims[1]
-                output = cv2.resize(output, (initial_w, intial_h))
+                output = cv2.resize(output, (initial_w, intial_h), interpolation=cv2.INTER_NEAREST)
                 tot_dist += self.get_metric(output,centroids[i])
 
         return tot_dist / float(num_examples)
@@ -130,7 +130,7 @@ class DistanceViaMode(object):
                 output = outputs[i,:,:]
                 intial_h = dataloader.dataset.initial_dims[0]
                 initial_w = dataloader.dataset.initial_dims[1]
-                output = cv2.resize(output, (initial_w, intial_h))
+                output = cv2.resize(output, (initial_w, intial_h), interpolation=cv2.INTER_NEAREST)
                 tot_dist += self.get_metric(output,centroids[i])
 
         return tot_dist / float(num_examples)

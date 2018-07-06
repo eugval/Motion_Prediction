@@ -16,7 +16,7 @@ from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
 
 from preprocessing.make_dataset import make_dataset
-from preprocessing.manipulate_dataset import make_train_test_split,make_val_set
+from preprocessing.manipulate_dataset import MakeDataSplits
 from preprocessing.resize_data import resize_data
 import time
 
@@ -136,12 +136,9 @@ for name, config in names:
         make_dataset(resized_file, dataset_file)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
-        f = h5py.File(dataset_file, "r")
-        dataset_size = f['datapoints'].value[0]
-        print(dataset_size)
-        f.close()
-        idx_sets = make_train_test_split(dataset_size, 0.1)
-        make_val_set(idx_sets,0.1,save_path = set_idx_file)
+        data_splitter = MakeDataSplits(dataset_file, resized_file)
+        data_splitter.make_frame_split('test', 0)
+        data_splitter.make_frame_split('val', 0.1,save_path=set_idx_file)
 
 
     if(mask_vis):
