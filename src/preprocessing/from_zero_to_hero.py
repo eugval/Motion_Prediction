@@ -29,7 +29,7 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Crossing1",1)]
+names = [ ("Football1",1)]
 detecting = False
 discarding = False
 tracking = False
