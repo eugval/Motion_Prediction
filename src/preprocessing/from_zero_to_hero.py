@@ -29,15 +29,15 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Football1",1), ("Football2",1)]
+names = [ ("Football1and2",2)]
 detecting = False
-discarding = False
-tracking = False
-resizing = False
-make_gaussians = False
+discarding = True
+tracking = True
+resizing = True
+make_gaussians = True
 dataset = True
 make_idx = True
-mask_vis = False
+mask_vis = True
 gauss_vis = False
 
 
@@ -87,7 +87,7 @@ for name, config in names:
             score_and_pos_discard(class_filtered_file, tracked_file, [('car', 0.8)])
         elif(config==2):
             class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
-            score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 225})
+            score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 150})
 
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 

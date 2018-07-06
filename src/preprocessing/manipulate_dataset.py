@@ -51,7 +51,8 @@ def make_val_set(idx_sets, val_frac, save_path = False):
 
 
 
-def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name):
+def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name, verbose = 0):
+    if verbose > 0 : print("Starting data merge...")
     #If the new folder does not exist, create if
     if not os.path.exists(new_dataset_folder):
         os.makedirs(new_dataset_folder)
@@ -64,12 +65,15 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name):
     f2 = h5py.File(dataset2, "r")
     f_new = h5py.File(new_dataset, "w")
 
+    if verbose > 0: print("Making metadata...")
     #Put the metadata into the new file
     total_frames = f1['frame_number'].value[0] + f2['frame_number'].value[0]
     f_new.create_dataset("class_names", data = f1['class_names'])
     f_new.create_dataset("frame_number", data = [total_frames])
 
     count = 0
+
+    if verbose > 0: print("Copying over frames from {}".format(dataset1))
 
     #Iterate over the frames of the the first video
     start_count = find_start_count(list(f1.keys()))
@@ -81,6 +85,7 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name):
             f_new.create_dataset("frame{}/{}".format(count,k), data=v)
         count+=1
 
+    if verbose > 0: print("Asserting...")
     #Check all the keys are correct
     assert set(f1.keys()) == set(f_new.keys())
     assert set(f1['frame4'].keys()) == set(f_new['frame4'].keys())
@@ -92,6 +97,7 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name):
         for k,v in  f_new[frame].items():
             assert np.all(v.value == f1[frame][k].value)
 
+    if verbose > 0: print("Copying over frames from {}".format(dataset2))
     #Iterate over the frames of the second video
     start_count = find_start_count(list(f2.keys()))
     frame_indices = range(start_count, f2['frame_number'].value[0])
@@ -101,6 +107,7 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name):
             f_new.create_dataset("frame{}/{}".format(count,k), data=v)
         count+=1
 
+    if verbose > 0: print("Asserting...")
     #Check that the keys are correct
     assert total_frames  == count
     assert set(f2['frame{}'.format(f2['frame_number'].value[0] - 5)])==set(f_new['frame{}'.format(total_frames -5)])
@@ -177,4 +184,5 @@ if __name__=='__main__':
         data_file2 = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name2, name2))
 
         new_folder = os.path.join(PROCESSED_PATH, "{}/".format(new_name))
-        merge_data(data_file1, data_file2, new_folder, new_name)
+
+        merge_data(data_file1, data_file2, new_folder, new_name, verbose =1)
