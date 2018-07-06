@@ -55,7 +55,6 @@ class MakeDataSplits(object):
 
         #Open the file containing the datapoints and frames
         f_dset = h5py.File(self.dataset_file_path, 'r')
-        f_fset = h5py.File(self.frames_file_path, 'r')
 
         timestep = f_dset['timestep'].value[0]
         number_of_inputs = f_dset['number_inputs'].value[0]
@@ -78,7 +77,6 @@ class MakeDataSplits(object):
             iteration = np.concatenate([self.idx_sets['train'], self.idx_sets['val']]).astype('int')
             #set the splitting datapoint
             split_datapoint = self.test_split_datapoint - int(frac * dataset_size)
-
 
 
         if(split_datapoint < 0):
@@ -111,7 +109,11 @@ class MakeDataSplits(object):
         if(save_path):
             self.save_idx_sets(save_path)
 
+        f_dset.close()
+
         return self.idx_sets
+
+
 
     def make_random_split(self,  split_type,  frac, save_path = False):
         if (self.split_method != 'random'):
@@ -136,6 +138,8 @@ class MakeDataSplits(object):
 
         if (save_path):
             self.save_idx_sets(save_path)
+
+        f_dset.close()
 
         return self.idx_sets
 
