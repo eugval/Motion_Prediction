@@ -31,20 +31,20 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-#data_names = ['Football1', 'Crossing1', 'Light1', 'Football2', 'Crossing2' ]
-data_names = ['Football2_1person']
+data_names = ['Football2_1person', 'Football1and2', 'Crossing1','Crossing2' ]
+#data_names = ['Football2_1person']
 
 
 for data_name in data_names:
     ###### PARAMETERS #######
-    model_name = "Unet_MI_{}".format(data_name)
+    model_name = "Unet_M_2ndGen_{}".format(data_name)
     num_epochs = 200
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
 
-    input_types = ['masks','images']
-    number_of_inputs = 12
+    input_types = ['masks']
+    number_of_inputs = 3
 
 
     eval_batch_size = 128
