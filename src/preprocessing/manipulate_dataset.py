@@ -7,7 +7,7 @@ import pickle
 import h5py
 import numpy as np
 from preprocessing.utils import find_start_count
-
+import time
 
 
 
@@ -249,24 +249,30 @@ def convert_to_folder_structure(data_file, target_folder):
 
 
 if __name__=='__main__':
-    make_split = False
-    merge = True
+
+    start_time = time.time()
+    make_split = True
+    merge = False
 
     # Path to the processed folders in the data
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 
-    names = [  ("Football1",2), ("30SLight1",1),("Crossing1",1),("Light1",1), ("Light2",1),("Crossing2",1), ("Football2",2),("Football1_sm",2)]
+    if (make_split):
+        names = [("Football1",2) ,("Crossing1",1), ("Crossing2",1), ("Football2",2),("Football1and2",2), ("Football2_1person",2)]
 
-    #names = [('Football1_sm5',1)]
-    for name, config in names:
-        resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
-        dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
-        set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
+        for name, config in names:
+            print("Doing {} .... ".format(name))
+            resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
+            dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
+            set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
 
-        if(make_split):
-            data_splitter = MakeDataSplits()
-            data_splitter.make_frame_split(dataset_file,resized_file,'test', 0)
-            data_splitter.make_frame_split(dataset_file, resized_file, 'val', 0.1, set_idx_file)
+
+            data_splitter = MakeDataSplits(dataset_file, resized_file,)
+            data_splitter.make_frame_split('test', 0)
+            data_splitter.make_frame_split( 'val', 0.1, save_path = set_idx_file)
+
+            print("finished")
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
 
     if(merge):
