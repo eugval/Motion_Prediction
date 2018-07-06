@@ -1,13 +1,14 @@
 import os
 import sys
+ROOT_DIR = os.path.abspath("../")
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 import pickle
 import h5py
 import numpy as np
 from preprocessing.utils import find_start_count
 
-ROOT_DIR = os.path.abspath("../")
-sys.path.append(ROOT_DIR)
-sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+
 
 
 def make_train_test_split(dataset_size, test_frac, save_path = False):
