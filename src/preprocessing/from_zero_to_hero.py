@@ -29,12 +29,12 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Football1",2), ("Football2",2)]
+names = [ ("Football1",2)]
 detecting = False
-discarding = False
-tracking = False
-resizing = False
-make_gaussians = False
+discarding = True
+tracking = True
+resizing = True
+make_gaussians = True
 dataset = True
 make_idx = True
 mask_vis = False
