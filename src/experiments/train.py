@@ -31,20 +31,23 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football2_1person', 'Football1and2', 'Crossing1','Crossing2' ]
+data_names = ['Football2_1person' ] # 'Football1and2', 'Crossing1','Crossing2'
 #data_names = ['Football2_1person']
 
 
 for data_name in data_names:
+    print("Dealing with {}".format(data_name))
+    sys.stdout.flush()
+
     ###### PARAMETERS #######
-    model_name = "Unet_M_2ndGen_{}".format(data_name)
+    model_name = "Unet_MI_2ndGen_{}".format(data_name)
     num_epochs = 200
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
 
-    input_types = ['masks']
-    number_of_inputs = 3
+    input_types = ['masks', 'images']
+    number_of_inputs = 12
 
 
     eval_batch_size = 128
@@ -125,6 +128,7 @@ for data_name in data_names:
     for epoch in range(num_epochs):
         print("Training Epoch {}".format(epoch))
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
+        sys.stdout.flush()
         for i, data in enumerate(train_dataloader):
             inputs = data['input'].float().to(device)
             labels = data['label'].float().to(device)
