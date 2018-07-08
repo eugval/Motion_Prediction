@@ -3,6 +3,10 @@ import h5py
 import numpy as np
 import cv2
 import torch
+import math
+from preprocessing.utils import incorporate_ratio
+from preprocessing.utils import visualise_image
+
 
 class DataFromH5py(Dataset):
     """Face Landmarks dataset."""
@@ -90,7 +94,6 @@ class DataFromH5py(Dataset):
 
 
 
-
 class ToTensor(object):
     """Convert ndarrays in sample to Tensors."""
 
@@ -108,7 +111,7 @@ class ToTensor(object):
 
 
 class ResizeSample(object):
-    def __init__(self, height= 128, width = 256):
+    def __init__(self, height = 128, width = 256):
         self.h = int(height)
         self.w = int(width)
 
@@ -126,7 +129,111 @@ class ResizeSample(object):
 
         return new_sample
 
+class RandomCropWithAspectRatio(object):
+    def __init__(self, max_crop = 10):
+        self.max_crop = max_crop
 
+    def __call__(self, sample):
+        input, label = sample['input'], sample['label']
+        new_sample = sample
+
+        initial_h, initial_w = input.shape[0], input.shape[1]
+
+        crop_amount = np.random.randint(self.max_crop)
+        new_h = initial_h - crop_amount
+        ratio  = new_h/initial_h
+        new_w = int(round(ratio*initial_w))
+
+        min_h = initial_h - new_h
+        min_w = initial_w - new_w
+
+        crop_type = np.random.randint(3)
+        if(crop_type == 0):
+            input = input[min_h:new_h,min_w:new_w,:]
+            label =  label[min_h:new_h, min_w:new_w]
+        elif(crop_type == 1):
+            input = input[:new_h, :new_w, :]
+            label = label[:new_h, :new_w]
+        elif(crop_type == 2):
+            input = input[min_h:, min_w:, :]
+            label = label[min_h:, min_w:]
+
+        new_sample['input'] = input
+        new_sample['label'] = label
+
+        return new_sample
+
+class RandomHorizontalFlip(object):
+    def __init__(self, chance = 0.5):
+        self.chance = chance
+
+    def __call__(self, sample):
+        input, label = sample['input'], sample['label']
+        new_sample = sample
+
+        do_it = np.random.uniform()
+        if (do_it >= self.chance):
+            return sample
+
+        input = cv2.flip(input, 1)
+        label  = cv2.flip(label, 1)
+
+        new_sample['input'] = input
+        new_sample['label'] = label
+
+        return new_sample
+
+class RandomRotation(object):
+    def __init__(self, rotation_range = 2):
+        self.rotation_range = rotation_range
+    def __call__(self,sample):
+        input, label = sample['input'], sample['label']
+        new_sample = sample
+
+        rows, cols = input.shape[0], input.shape[1]
+
+        rotation_angle = np.random.uniform(-self.rotation_range, self.rotation_range)
+
+
+        M = cv2.getRotationMatrix2D((cols / 2, rows / 2), rotation_angle , 1)
+        input = cv2.warpAffine(input, M, (cols, rows))
+        label = cv2.warpAffine(label, M, (cols, rows))
+
+
+        new_sample['input'] = input
+        new_sample['label'] = label
+
+        return new_sample
+
+
+
+class RandomNoise(object):
+    def __init__(self, noise_range = 50, chance = 0.3):
+        self.noise_range = noise_range
+        self.chance = chance
+
+    def __call__(self,sample):
+        input, label = sample['input'], sample['label']
+        new_sample = sample
+
+        rows, cols = input.shape[0], input.shape[1]
+
+        do_it = np.random.uniform()
+        if(do_it >= self.chance):
+            return sample
+
+        for inp_idx in range(input.shape[-1]):
+            if(np.unique(input[:,:, inp_idx]).shape[0]==2):
+                continue
+
+            rand_array = np.random.randint(-self.noise_range,self.noise_range,(rows,cols))
+            input[:,:,inp_idx]+=rand_array
+            input[:, :, inp_idx] = np.minimum(input[:,:,inp_idx], 255)
+            input[:, :, inp_idx] = np.maximum(input[:,:,inp_idx], 0)
+
+        new_sample['input'] = input
+
+        return new_sample
 
 
 
@@ -138,20 +245,26 @@ if __name__=='__main__':
     from torchvision import transforms
 
 
-    data_file_name = "Football1"
+    data_file_name = "Crossing1_sm"
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_file_name,data_file_name))
-    set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_file_name,data_file_name))
+    idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_file_name,data_file_name))
 
-    set_idx = pickle.load( open(set_idx_file, "rb" ) )
+    input_types = ['masks', 'images']
+    idx_sets = pickle.load(open(idx_sets_file, "rb"))
 
+    train_set = DataFromH5py(dataset_file, idx_sets, input_type=input_types, transform=RandomCropWithAspectRatio())
 
-    dataset = DataFromH5py(dataset_file,set_idx, transform = transforms.Compose([
-                                               ResizeSample(),
-                                               ToTensor()
-                                           ]))
+    sample = train_set[4]
+    raw_sample = train_set.get_raw(4)
 
-    for i in range(len(dataset)):
-        print(i)
-        sample = dataset[i]
-        print(sample)
-        print(sample['input'].size(),sample['label'].size())
+    sample_inputs = sample['input']
+    sample_label = sample['label']
+
+    raw_sample_inputs = raw_sample['input']
+    raw_sample_label = raw_sample['label']
+
+    # for i in range(len(train_set)):
+    #     print(i)
+    #     sample = train_set[i]
+    #     print(sample)
+    #     print(sample['input'].size(),sample['label'].size())

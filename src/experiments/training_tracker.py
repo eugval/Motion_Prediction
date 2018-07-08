@@ -13,6 +13,7 @@ class TrainingTracker(object):
     def __init__(self, iterations_per_epoch):
         self.metrics = {}
         self.iterations_per_epoch=iterations_per_epoch
+        self.saved_epoch = 0
 
     def add(self, value, name):
         if name in self.metrics:
@@ -67,6 +68,11 @@ class TrainingTracker(object):
             plt.savefig(save_path)
         else:
             plt.show()
+
+    def record_saving(self):
+        self.saved_epoch += 1
+
+
 
 
 if __name__ == '__main__':

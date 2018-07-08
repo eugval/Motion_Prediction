@@ -1,5 +1,5 @@
 import h5py
-from preprocessing.utils import find_start_count
+from preprocessing.utils import find_start_count, incorporate_ratio
 import cv2
 import os
 import sys
@@ -22,15 +22,7 @@ def resize_image(image, height, width):
 
 
 
-def incorporate_ratio(initial_dims,max_height, max_width):
-    initial_height = initial_dims[0]
-    initial_width = initial_dims[1]
-    ratio = min(max_height/initial_height, max_width/initial_width)
 
-    new_h = ratio*initial_height
-    new_w = ratio * initial_width
-
-    return int(new_h), int(new_w), ratio
 
 
 def crop_images(image_dir, x_min =0 , x_max=None,y_min=0, y_max=None):

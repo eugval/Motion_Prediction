@@ -58,6 +58,16 @@ def visualise_image(image, save_path = None):
 
 
 
+def incorporate_ratio(initial_dims,max_height, max_width):
+    initial_height = initial_dims[0]
+    initial_width = initial_dims[1]
+    ratio = min(max_height/initial_height, max_width/initial_width)
+
+    new_h = ratio*initial_height
+    new_w = ratio * initial_width
+
+    return int(new_h), int(new_w), ratio
+
 
 
 

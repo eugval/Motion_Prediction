@@ -22,7 +22,8 @@ from torch.utils.data import  DataLoader
 from experiments.model import   SimpleUNet, Unet
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
-from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
+from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
+from experiments.early_stopper import EarlyStopper
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -31,7 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Crossing2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = ['Football1_sm6' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 #data_names = ['Football2_1person']
 
 
@@ -41,10 +42,11 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     model_name = "Unet_MI_2ndGen_{}".format(data_name)
-    num_epochs = 200
+    num_epochs = 100
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
+    patience = 100
 
     input_types = ['masks', 'images']
     number_of_inputs = 12
@@ -94,10 +96,10 @@ for data_name in data_names:
     train_dataloader = DataLoader(train_set, batch_size= batch_size,
                             shuffle=True)
 
-    val_dataloader = DataLoader(val_set, batch_size= 128,
+    val_dataloader = DataLoader(val_set, batch_size= eval_batch_size,
                             shuffle=True)
 
-    train_eval_dataloader = DataLoader(eval_train_set, batch_size= 128,
+    train_eval_dataloader = DataLoader(eval_train_set, batch_size= eval_batch_size,
                             shuffle=True)
 
 
@@ -121,11 +123,19 @@ for data_name in data_names:
     iou_mask = IoUMetric(type = 'mask')
 
 
+    ##### Instantiate Early Stopping Object ######
+    early_stopper = EarlyStopper(patience)
+
     print("Ready to train")
     sys.stdout.flush()
     #### Start the training ####
 
     for epoch in range(num_epochs):
+        if(not early_stopper.continue_training()):
+            print("Early Stopping Triggered, Breaking out of the training loop")
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+            break
+
         print("Training Epoch {}".format(epoch))
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
         sys.stdout.flush()
@@ -176,17 +186,19 @@ for data_name in data_names:
             print('Val iou bbox: {}'.format(val_iou_bbox))
             print('Val iou mask: {}'.format(val_iou_mask))
 
+            print("Finished Evaluating Epoch {}".format(epoch))
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+            sys.stdout.flush()
 
-
-        print("Finished Evaluating Epoch {}".format(epoch))
-        print("--- %s seconds elapsed ---" % (time.time() - start_time))
-
-        print("Finished Training, saving model...")
+        save_model = early_stopper.checkpoint(val_iou_mask)
         sys.stdout.flush()
-        torch.save(model.state_dict(), model_file)
+        if(save_model):
+            tracker.record_saving()
+            torch.save(model.state_dict(), model_file)
 
-    print('Saving training tracker....')
-    pickle.dump(tracker, open(model_history_file, "wb"))
+        print('Saving training tracker....')
+        pickle.dump(tracker, open(model_history_file, "wb"))
+
     print('Finished all')
 
 

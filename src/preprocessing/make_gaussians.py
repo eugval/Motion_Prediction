@@ -61,7 +61,7 @@ def make_gaussian_masks(data_file, use_covariance=False ,verbose = 0):
 
     start_count = find_start_count(list(f.keys()))
 
-    image_dims = f["frame1"]['masks'].value[:,:,0].shape
+    image_dims = (f["frame1"]['image'].shape[0] , f["frame1"]['image'].shape[1])
 
     for i in range(start_count, f['frame_number'].value[0]):
         frame = "frame{}".format(i)
@@ -261,15 +261,25 @@ if __name__ =='__main__':
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
     RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-    data_file = os.path.join(PROCESSED_PATH, "30SLight1_Test/30SLight1_Test.hdf5")
-    target_file = os.path.join(PROCESSED_PATH, "30SLight1_Test/30SLight1_Test_Fewer_Masks.hdf5")
-    consolidated_file = os.path.join(PROCESSED_PATH, "30SLight1_Test/30SLight1_Test_Fewer_Masks_Consolidated.hdf5")
-    target_folder = os.path.join(PROCESSED_PATH, "30SLight1_Test/tracked_images_gauss/")
+    name = "Football1_sm6"
+
+    data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
+    class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
+
+    tracked_file = os.path.join(PROCESSED_PATH, "{}/{}_tracked.hdf5".format(name, name))
+    tracked_file_c = os.path.join(PROCESSED_PATH, "{}/{}_tracked_c.hdf5".format(name, name))
+    resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name, name))
+    dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
+    set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
+
+    target_folder = os.path.join(PROCESSED_PATH, "{}/mask_images/".format(name))
+    target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
+    target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
 
     if(gauss):
         print("Making gaussian masks...")
-        make_gaussian_masks(target_file, verbose =0)
+        make_gaussian_masks(resized_file, verbose =0)
 
     if(gauss_vis):
         print("Visualising gaussians...")
-        visualise_gaussians(target_file,target_folder)
+        visualise_gaussians(resized_file,target_folder)
