@@ -4,7 +4,7 @@ import sys
 ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
-
+from shutil import copyfile
 
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
@@ -32,8 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football1_sm6' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
-#data_names = ['Football2_1person']
+data_names = ['Football2_1person' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -64,8 +63,12 @@ for data_name in data_names:
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name,model_name))
+    training_script_file = os.path.join(model_folder, "training_script.txt")
+
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
+
+    copyfile('./train.py', training_script_file)
 
 
     start_time = time.time()
@@ -199,6 +202,8 @@ for data_name in data_names:
         print('Saving training tracker....')
         pickle.dump(tracker, open(model_history_file, "wb"))
 
+    tracker.record_finished_training()
+    pickle.dump(tracker, open(model_history_file, "wb"))
     print('Finished all')
 
 

@@ -14,6 +14,7 @@ class TrainingTracker(object):
         self.metrics = {}
         self.iterations_per_epoch=iterations_per_epoch
         self.saved_epoch = 0
+        self.finised = False
 
     def add(self, value, name):
         if name in self.metrics:
@@ -71,6 +72,9 @@ class TrainingTracker(object):
 
     def record_saving(self):
         self.saved_epoch += 1
+
+    def record_finished_training(self):
+        self.finished = True
 
 
 
