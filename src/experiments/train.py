@@ -32,7 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = ['Football2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -48,7 +48,7 @@ for data_name in data_names:
     patience = 100
 
     input_types = ['masks', 'images']
-    number_of_inputs = 12
+    number_of_inputs = 12 # 3 RGB images + 3 masks
 
 
     eval_batch_size = 128

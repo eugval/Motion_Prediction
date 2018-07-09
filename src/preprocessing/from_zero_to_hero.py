@@ -30,7 +30,7 @@ PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
 names = [ ("Football2",2)]
-detecting = False
+detecting = True
 discarding = True
 tracking = True
 resizing = True
