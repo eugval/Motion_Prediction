@@ -103,7 +103,6 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
     f2.create_dataset("number_inputs", data=[number_inputs])
     f2.create_dataset("future_time", data=[future_time])
 
-    assert number_inputs*timestep< future_time-1 #take out
 
     max_frames =  f['frame_number'].value[0]
     start_count = find_start_count(list(f.keys()))

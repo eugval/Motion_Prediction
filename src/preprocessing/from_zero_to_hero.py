@@ -29,12 +29,12 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Football2",2)]
-detecting = True
-discarding = True
-tracking = True
-resizing = True
-make_gaussians = True
+names = [ ("Football2_1person",2)] # Football1and2, Football2_1person , Crossing1, Crossing2
+detecting = False
+discarding = False
+tracking = False
+resizing = False
+make_gaussians = False
 dataset = True
 make_idx = True
 mask_vis = False
@@ -133,7 +133,7 @@ for name, config in names:
     if(dataset):
         print("Making the dataset...")
         sys.stdout.flush()
-        make_dataset(resized_file, dataset_file)
+        make_dataset(resized_file, dataset_file, future_time=5)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
         data_splitter = MakeDataSplits(dataset_file, resized_file)
