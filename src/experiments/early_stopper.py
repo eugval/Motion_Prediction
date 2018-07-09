@@ -1,7 +1,7 @@
 
 class EarlyStopper(object):
 
-    def __init__(self, patience, after_stop_training = 0, verbose = 1):
+    def __init__(self, patience, seek_decrease =False, after_stop_training = 0, verbose = 1):
         '''
         Early Stopper class, checkpoints the model at each epoch and triggers stop training if val set performance
         has been decreasing over a number of epochs
@@ -12,9 +12,10 @@ class EarlyStopper(object):
         '''
 
         self.patience = patience
-        self.decreasing_epochs = 0
-        self.last_increasing_val = 0.0
+        self.decreasing_performance = 0
+        self.last_saved_val = 0.0
         self.verbose = verbose
+        self.seek_decrease = seek_decrease
 
         self.stop = False
         self.after_stop_training = after_stop_training
@@ -26,22 +27,24 @@ class EarlyStopper(object):
         :return: True if the model is to be saved, false otherwise.
         '''
 
+        if(self.seek_decrease):
+            performance_metric = -performance_metric
         #If early stopping is not triggered and the performance is increasing, save the model
-        if (not self.stop and performance_metric >= self.last_increasing_val):
+        if (not self.stop and self.performed_better(performance_metric)):
             if (self.verbose>0):
                 print("Performance increasing in the val set, saving the model!")
-            self.last_increasing_val = performance_metric
-            self.decreasing_epochs = 0
+            self.last_saved_val = performance_metric
+            self.decreasing_performance = 0
             return True
         else:
             #record decreasing performance
-            self.decreasing_epochs += 1
+            self.decreasing_performance += 1
 
             #If performance has been decreasing more than the patience trigger early stopping
-            if (self.decreasing_epochs >= self.patience):
+            if (self.decreasing_performance >= self.patience):
                 print("Early stopping activated : {} consecutive epochs where performance is decreasing!".format(
-                    self.decreasing_epochs))
-                print("Model saved yields a val set accuracy of : {}".format(self.last_increasing_val))
+                    self.decreasing_performance))
+                print("Model saved yields a val set accuracy of : {}".format(self.last_saved_val))
                 self.stop = True
                 return False
             else:
@@ -62,3 +65,9 @@ class EarlyStopper(object):
         else:
             self.after_stop_training -= 1
             return True
+
+    def performed_better(self, performance_metric):
+        if(self.last_saved_val == 0.0 and performance_metric != 0):
+            return True
+        else:
+            return performance_metric >= self.last_saved_val

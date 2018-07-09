@@ -40,21 +40,23 @@ class DataFromH5py(Dataset):
         frame = "datapoint{}".format(datapoint_idx)
 
         #TODO: maybe use a different technique than reshaping
-        inputs =  []
+        inputs_images =  []
+        inputs_masks = []
         for in_type in self.input_type:
             inp = self.f[frame][in_type].value
             if(len(inp.shape)==4):
                 for i in range(inp.shape[3]):
-                    inputs.append(inp[:,:,:,i])
+                    inputs_images.append(inp[:,:,:,i])
             elif(len(inp.shape)==3):
                 #Length 3 inputs are masks, so convert them to integers and max them out
                 if(self.only_one_mask):
-                    inputs.append(inp[:,:,0].astype(int) * 255)
+                    inputs_masks.append(inp[:,:,0].astype(int) * 255)
                 else:
-                    inputs.append(inp.astype(int)*255)
+                    inputs_masks.append(inp.astype(int)*255)
             else:
                 raise ValueError("Inputs can have 3 or 4 dimentions")
 
+        inputs = inputs_images+inputs_masks
         inputs = np.dstack(inputs)
         label = self.f[frame][self.label_type].value
 
@@ -73,17 +75,23 @@ class DataFromH5py(Dataset):
 
         frame = "datapoint{}".format(datapoint_idx)
 
-        inputs = []
+        inputs_images =  []
+        inputs_masks = []
         for in_type in self.input_type:
             inp = self.f[frame][in_type].value
-            if (len(inp.shape) == 4):
+            if(len(inp.shape)==4):
                 for i in range(inp.shape[3]):
-                    inputs.append(inp[:, :, :, i])
-            elif (len(inp.shape) == 3):
-                for i in range(inp.shape[2]):
-                    inputs.append(inp[:, :, i])
+                    inputs_images.append(inp[:,:,:,i])
+            elif(len(inp.shape)==3):
+                #Length 3 inputs are masks, so convert them to integers and max them out
+                if(self.only_one_mask):
+                    inputs_masks.append(inp[:,:,0].astype(int) * 255)
+                else:
+                    inputs_masks.append(inp.astype(int)*255)
             else:
                 raise ValueError("Inputs can have 3 or 4 dimentions")
+
+        inputs = inputs_images+inputs_masks
 
         label = self.f[frame][self.label_type].value
 

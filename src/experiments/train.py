@@ -48,12 +48,27 @@ for data_name in data_names:
     only_one_mask = False
 
     patience = 6
+    use_loss_for_early_stopping = True
 
     input_types = ['masks', 'images']
     number_of_inputs = 12 # 3 RGB images + 3 masks
 
 
     eval_batch_size = 128
+
+    param_holder ={'data_name': data_name,
+                   'model_name': model_name,
+                   'num_epochs': num_epochs,
+                   'batch_size': batch_size,
+                   'learning_rate': learning_rate,
+                   'eval_percent': eval_percent,
+                   'only_one_mask': only_one_mask,
+                   'patience': patience,
+                   'input_types': input_types,
+                   'number_of_inputs': number_of_inputs,
+                   'eval_batch_size': eval_batch_size,
+                   'use_loss_for_early_stopping':use_loss_for_early_stopping
+                   }
 
 
 
@@ -65,18 +80,18 @@ for data_name in data_names:
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name,model_name))
-    training_script_file = os.path.join(model_folder, "training_script.txt")
+    param_holder_file = os.path.join(model_folder, "param_holder.pickle")
 
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
-
-    #copyfile('./train.py', training_script_file)
 
 
     start_time = time.time()
 
     ###### Grab the data #####
     idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
+
+    param_holder['idx_sets' ] = idx_sets
 
     train_set = DataFromH5py(dataset_file,idx_sets,input_type = input_types,only_one_mask=only_one_mask,
                              transform = transforms.Compose([
@@ -100,6 +115,7 @@ for data_name in data_names:
                                                    ToTensor()
                                                   ]))
 
+    param_holder['idx_set_eval'] = idx_set_eval
 
     train_dataloader = DataLoader(train_set, batch_size= batch_size,
                             shuffle=True)
@@ -112,6 +128,8 @@ for data_name in data_names:
 
 
 
+    ### Save the param holder ####
+    pickle.dump(param_holder, open(param_holder_file, "wb"))
 
     ###### Define the Model ####
     model = Unet(number_of_inputs)
@@ -132,7 +150,7 @@ for data_name in data_names:
 
 
     ##### Instantiate Early Stopping Object ######
-    early_stopper = EarlyStopper(patience)
+    early_stopper = EarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
 
     print("Ready to train")
     sys.stdout.flush()
@@ -198,7 +216,12 @@ for data_name in data_names:
             print("--- %s seconds elapsed ---" % (time.time() - start_time))
             sys.stdout.flush()
 
-        save_model = early_stopper.checkpoint(val_iou_mask)
+        if(not use_loss_for_early_stopping):
+            save_model = early_stopper.checkpoint(val_iou_mask)
+        else:
+            save_model = early_stopper.checkpoint(val_loss)
+
+
         sys.stdout.flush()
         if(save_model):
             tracker.record_saving()
