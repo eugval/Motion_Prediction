@@ -9,9 +9,7 @@ from preprocessing.utils import visualise_image
 
 
 class DataFromH5py(Dataset):
-    """Face Landmarks dataset."""
-
-    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["masks"], label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
+    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["masks"], only_one_mask = False, label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
         #Data and data manipulations
         self.f = h5py.File(file_path, "r")
         self.transform = transform
@@ -25,6 +23,7 @@ class DataFromH5py(Dataset):
         self.label_type = label_type
         self.input_type = input_type
         self.other_sample_entries = other_sample_entries
+        self.only_one_mask = only_one_mask
 
         #Data general parameters
         self.initial_dims = (self.f['datapoint1']['images'].shape[0], self.f['datapoint1']['images'].shape[1])
@@ -49,7 +48,10 @@ class DataFromH5py(Dataset):
                     inputs.append(inp[:,:,:,i])
             elif(len(inp.shape)==3):
                 #Length 3 inputs are masks, so convert them to integers and max them out
-                inputs.append(inp.astype(int)*255)
+                if(self.only_one_mask):
+                    inputs.append(inp[:,:,0].astype(int) * 255)
+                else:
+                    inputs.append(inp.astype(int)*255)
             else:
                 raise ValueError("Inputs can have 3 or 4 dimentions")
 
