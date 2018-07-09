@@ -45,6 +45,8 @@ for data_name in data_names:
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
+    only_one_mask = False
+
     patience = 6
 
     input_types = ['masks', 'images']
@@ -76,21 +78,24 @@ for data_name in data_names:
     ###### Grab the data #####
     idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
 
-    train_set = DataFromH5py(dataset_file,idx_sets,input_type = input_types, transform = transforms.Compose([
+    train_set = DataFromH5py(dataset_file,idx_sets,input_type = input_types,only_one_mask=only_one_mask,
+                             transform = transforms.Compose([
                                                    ResizeSample(),
                                                    ToTensor()
                                                   ]))
 
 
 
-    val_set = DataFromH5py(dataset_file, idx_sets, input_type = input_types,purpose ='val',  transform = transforms.Compose([
+    val_set = DataFromH5py(dataset_file, idx_sets, input_type = input_types,
+                           only_one_mask=only_one_mask, purpose ='val',  transform = transforms.Compose([
                                                                        ResizeSample(),
                                                                        ToTensor()
                                                                       ]))
 
     #Make a dataset with a subset of the training examples for evaluation
     idx_set_eval = {'train': np.random.choice(idx_sets['train'], int(len(train_set)*eval_percent), replace=False)}
-    eval_train_set = DataFromH5py(dataset_file,idx_set_eval, input_type = input_types,transform = transforms.Compose([
+    eval_train_set = DataFromH5py(dataset_file,idx_set_eval,
+                                  only_one_mask=only_one_mask,input_type = input_types,transform = transforms.Compose([
                                                    ResizeSample(),
                                                    ToTensor()
                                                   ]))
