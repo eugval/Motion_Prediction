@@ -57,7 +57,12 @@ class TrainingTracker(object):
             plt.subplot(int(number_of_plots/2), 2, i)
             x_ticks = np.arange(len(v)) * self.iterations_per_epoch
             plt.plot(x_ticks, v)
-            plt.xlabel("Iterations (no of batches)")
+            if('loss' in k):
+                pass
+            else:
+                plt.ylim(0, 1)
+
+            plt.xlabel("Iterations (no of batches with {} batches per epoch)".format(self.iterations_per_epoch))
             plt.ylabel(k)
             plt.title(k + " vs number of iterations")
 
@@ -83,8 +88,8 @@ if __name__ == '__main__':
 
     save = True
 
-    data_name = 'Football2_1person'
-    model_name = "Unet_M_{}".format(data_name)
+    data_name = 'Football2'
+    model_name = "Unet_MI_2ndGen_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
