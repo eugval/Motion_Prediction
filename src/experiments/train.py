@@ -41,10 +41,10 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     #inputs and model params
-    model_name = "Unet_M_3ndGen_{}".format(data_name)
+    model_name = "Unet_MI_3ndGen_{}".format(data_name)
     only_one_mask = False
-    input_types = ['masks']
-    number_of_inputs = 3 # 3 RGB images + 3 masks
+    input_types = ['masks', 'images']
+    number_of_inputs = 12 # 3 RGB images + 3 masks
 
 
     #training params
