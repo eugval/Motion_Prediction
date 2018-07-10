@@ -149,16 +149,30 @@ class IoUMetric(object):
         if(type == 'bbox'):
             self.boxMaker = MaskToMeasures()
 
-    def get_metric(self, pred_masks, true_masks):
+    def get_metric(self, pred_masks, true_masks, verbose =1):
         if(self.type == 'bbox'):
             ious = []
             for i in range(pred_masks.shape[0]):
                 pred_mask = pred_masks[i,:,:]
                 true_mask = true_masks[i,:,:]
+
+                #if(not np.any(true_mask) and not  np.any(pred_mask)):
+                 #   continue
+                #else:
                 p_rmin, p_rmax, p_cmin, p_cmax = self.boxMaker.get_bbox_from_mask(pred_mask)
                 t_rmin, t_rmax, t_cmin, t_cmax = self.boxMaker.get_bbox_from_mask(true_mask)
 
                 ious.append(iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax]))
+                #####DEBUG - REMOVE ####
+                if(verbose>0):
+                    if(np.isnan(iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax]))):
+                        print('nan in bbox iou')
+                        print('pred and true bbxes:')
+                        print([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax])
+                        print('predicted mask:{}'.format(pred_mask.sum(-1).sum(-1)))
+                        print('true mask: {}'.format(true_mask.sum(-1).sum(-1)))
+                #############################
+
             return sum(ious)
         elif(self.type == 'mask'):
             if(not pred_masks.dtype == 'bool' or not true_masks.dtype =='bool'):
@@ -167,6 +181,17 @@ class IoUMetric(object):
             intersection = pred_masks*true_masks
             union = pred_masks + true_masks
 
+            #####DEBUG - REMOVE ####
+            if(verbose>0):
+                if(np.isnan((intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum())):
+                    print('mask ious nan')
+                    print('intesection:')
+                    print(intersection.sum(-1).sum(-1))
+                    print('union:')
+                    print(union.sum(-1).sum(-1))
+                    print('predicted masks:{}'.format(pred_masks.sum(-1).sum(-1)))
+                    print('true masks: {}'.format(true_masks.sum(-1).sum(-1)))
+            ####################
             return (intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum()
 
     def evaluate(self, model, dataloader,  device, threshold = 0.5):
@@ -190,6 +215,8 @@ class IoUMetric(object):
 
             outputs = outputs>threshold
             labels = labels.astype('bool')
+
+
             tot_iou += self.get_metric(outputs,labels)
 
         return tot_iou / float(num_examples)

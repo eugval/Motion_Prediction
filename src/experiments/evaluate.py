@@ -30,12 +30,12 @@ from matplotlib.offsetbox import AnchoredText
 device = torch.device("cpu")
 
 input_type = 'images'
-input_types = ['masks','images']
+input_types = ['masks', 'images']
 
-data_name ="Football2"
+data_name ="Crossing2"
 trials = 5
 input_num = 12
-purpose = 'train'
+purpose = 'val'
 
 for trial in range(trials):
     print("Doing {}".format(data_name))

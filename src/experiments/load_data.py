@@ -13,6 +13,9 @@ class DataFromH5py(Dataset):
         #Data and data manipulations
         self.f = h5py.File(file_path, "r")
         self.transform = transform
+        self.future_time = self.f['future_time'].value[0]
+        self.number_of_inputs = self.f['number_inputs'].value[0]
+        self.timestep = self.f['timestep'].value[0]
 
         #Train / Test / Val splits
         self.purpose = purpose #train /test /val
@@ -87,7 +90,8 @@ class DataFromH5py(Dataset):
                 if(self.only_one_mask):
                     inputs_masks.append(inp[:,:,0].astype(int) * 255)
                 else:
-                    inputs_masks.append(inp.astype(int)*255)
+                    for i in range(inp.shape[2]):
+                        inputs_masks.append(inp[:,:,i].astype(int)*255)
             else:
                 raise ValueError("Inputs can have 3 or 4 dimentions")
 
@@ -140,33 +144,38 @@ class ResizeSample(object):
         return new_sample
 
 class RandomCropWithAspectRatio(object):
-    def __init__(self, max_crop = 10):
+    def __init__(self, max_crop = 25):
         self.max_crop = max_crop
 
     def __call__(self, sample):
-        input, label = sample['input'], sample['label']
-        new_sample = sample
+        consistent_result = False
+        while(not consistent_result):
+            input, label = sample['input'], sample['label']
+            new_sample = sample
 
-        initial_h, initial_w = input.shape[0], input.shape[1]
+            initial_h, initial_w = input.shape[0], input.shape[1]
 
-        crop_amount = np.random.randint(self.max_crop)
-        new_h = initial_h - crop_amount
-        ratio  = new_h/initial_h
-        new_w = int(round(ratio*initial_w))
+            crop_amount = np.random.randint(self.max_crop)
+            new_h = initial_h - crop_amount
+            ratio  = new_h/initial_h
+            new_w = int(round(ratio*initial_w))
 
-        min_h = initial_h - new_h
-        min_w = initial_w - new_w
+            min_h = initial_h - new_h
+            min_w = initial_w - new_w
 
-        crop_type = np.random.randint(3)
-        if(crop_type == 0):
-            input = input[min_h:new_h,min_w:new_w,:]
-            label =  label[min_h:new_h, min_w:new_w]
-        elif(crop_type == 1):
-            input = input[:new_h, :new_w, :]
-            label = label[:new_h, :new_w]
-        elif(crop_type == 2):
-            input = input[min_h:, min_w:, :]
-            label = label[min_h:, min_w:]
+            crop_type = np.random.randint(3)
+            if(crop_type == 0):
+                input = input[min_h:new_h,min_w:new_w,:]
+                label =  label[min_h:new_h, min_w:new_w]
+            elif(crop_type == 1):
+                input = input[:new_h, :new_w, :]
+                label = label[:new_h, :new_w]
+            elif(crop_type == 2):
+                input = input[min_h:, min_w:, :]
+                label = label[min_h:, min_w:]
+
+            if(np.all(label.sum(0)>= 16)and np.all(label.sum(1)>= 16) and np.all(input.sum(0)>=16) and np.all(input.sum(1)>=16)):
+                consistent_result = True
 
         new_sample['input'] = input
         new_sample['label'] = label

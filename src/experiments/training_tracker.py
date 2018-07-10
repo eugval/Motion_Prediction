@@ -88,7 +88,7 @@ if __name__ == '__main__':
 
     save = True
 
-    data_name = 'Football2'
+    data_name = 'Crossing1'
     model_name = "Unet_MI_2ndGen_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
