@@ -32,7 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Crossing1' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = ['Football2_1person' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -40,11 +40,12 @@ for data_name in data_names:
     sys.stdout.flush()
 
     ###### PARAMETERS #######
-    #inputs and model params
-    model_name = "Unet_MI_3ndGen_{}".format(data_name)
+    #inputs, label and model params
+    model_name = "Unet_B_1rstGen{}".format(data_name)
     only_one_mask = False
-    input_types = ['masks', 'images']
-    number_of_inputs = 12 # 3 RGB images + 3 masks
+    input_types = ['bboxes']
+    label_type = 'future_bbox'
+    number_of_inputs = 3 # 3 RGB images + 3 masks
 
 
     #training params
@@ -52,16 +53,21 @@ for data_name in data_names:
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
-    patience = 6
+    patience = 7
     use_loss_for_early_stopping = True
 
     #data manipulation/augmentation params
-    resize_height = 64
+    resize_height =  128
     resize_width = 2*resize_height
 
     random_crop = True
+    crop_order = 10
+
     random_horizontal_fip = True
-    random_rotation = True
+
+    random_rotation = False
+    max_rotation_angle = 2
+
     random_noise = False
 
     #evaluation params
@@ -85,7 +91,9 @@ for data_name in data_names:
                    'random_crop':random_crop,
                    'random_horizontal_fip': random_horizontal_fip,
                    'random_rotation': random_rotation,
-                   'random_noise': random_noise
+                   'random_noise': random_noise,
+                   'max_rotation_angle':max_rotation_angle,
+                   'crop_order':crop_order
                    }
 
 
@@ -118,9 +126,9 @@ for data_name in data_names:
     if(random_horizontal_fip):
         input_transforms.append(RandomHorizontalFlip())
     if(random_rotation):
-        input_transforms.append(RandomRotation())
+        input_transforms.append(RandomRotation(rotation_range = max_rotation_angle))
     if(random_crop):
-        input_transforms.append(RandomCropWithAspectRatio())
+        input_transforms.append(RandomCropWithAspectRatio( max_crop = crop_order))
     if(random_noise):
         input_transforms.append(RandomNoise())
 

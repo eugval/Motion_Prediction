@@ -34,6 +34,7 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
     masks = []
     delta_masks = []
     centroids = []
+    bboxes = []
 
     #Grap the  inputs
     for j in range(number_inputs):
@@ -54,6 +55,9 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
         #Get the centroid of the mask
         centroids.append(origin['centroids'].value[mask_idx, :])
 
+        #Get the bbox of the mask
+        bboxes.append(origin['rois'].value[mask_idx,:])
+
         #Get tge delta_masks
         delta_masks.append(masks[0].astype(int)- mask.astype(int))
 
@@ -63,19 +67,23 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
     gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
     future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,mask_idx]
     future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[mask_idx,:]
+    future_bbox =  f['frame{}'.format(frame_number)]['rois'].value[mask_idx,:]
 
     #prepare the data as np arrays for hdf5
     images = np.stack(images, axis=3)
     masks = np.dstack(masks)
     delta_masks = np.dstack(delta_masks)
     centroids = np.stack(centroids,axis = 0)
+    bboxes = np.stack(bboxes,axis = 0)
 
     f2.create_dataset('datapoint{}/images'.format(datapoint_index),data=images)
     f2.create_dataset('datapoint{}/masks'.format(datapoint_index),data=masks)
     f2.create_dataset('datapoint{}/centroids'.format(datapoint_index), data=centroids)
+    f2.create_dataset('datapoint{}/bboxes'.format(datapoint_index), data=bboxes)
     f2.create_dataset('datapoint{}/delta_masks'.format(datapoint_index),data=delta_masks)
     f2.create_dataset('datapoint{}/future_mask'.format(datapoint_index), data=future_mask)
     f2.create_dataset('datapoint{}/future_centroid'.format(datapoint_index), data=future_centroid)
+    f2.create_dataset('datapoint{}/future_bbox'.format(datapoint_index), data=future_bbox)
     f2.create_dataset('datapoint{}/gaussian_mask'.format(datapoint_index),data=gaussian_mask)
 
 
