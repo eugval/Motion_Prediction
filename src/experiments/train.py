@@ -26,7 +26,7 @@ from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomC
 from experiments.early_stopper import EarlyStopper
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = 'cpu'
 print(device)
