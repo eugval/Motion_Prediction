@@ -32,7 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football2_1person' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = [ 'Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -53,7 +53,7 @@ for data_name in data_names:
     batch_size = 32
     learning_rate = 0.01
     eval_percent = 0.1
-    patience = 7
+    patience = 6
     use_loss_for_early_stopping = True
 
     #data manipulation/augmentation params
