@@ -44,7 +44,7 @@ class CentroidCalculator(object):
         mean_x = np.average(positions[:, 0], weights=w)
         mean_y = np.average(positions[:, 1], weights=w)
 
-        return np.array([mean_y,mean_x])
+        return np.array([mean_x,mean_y])
 
     def get_centroid_via_mode(self,grid):
         return np.unravel_index(np.argmax(grid), grid.shape)

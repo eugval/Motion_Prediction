@@ -21,7 +21,7 @@ import pickle
 from torchvision import transforms
 from experiments.model import   SimpleUNet, Unet
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode
-from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
+from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
 
 
 
@@ -29,18 +29,34 @@ from matplotlib.offsetbox import AnchoredText
 
 device = torch.device("cpu")
 
-input_type = 'images'
-input_types = ['masks', 'images']
+input_type = 'masks'
+input_types = ['masks']
 
-data_name ="Crossing2"
-trials = 5
-input_num = 12
+data_name ="Football1and2"
+trials = 6
+input_num = 3
 purpose = 'val'
+
+
+resize_height =  64
+resize_width = 2*resize_height
+
+random_crop = False
+crop_order = 10
+
+random_horizontal_fip = False
+
+random_rotation = False
+max_rotation_angle = 20
+
+random_noise = False
+
+
 
 for trial in range(trials):
     print("Doing {}".format(data_name))
 
-    model_name = "Unet_MI_2ndGen_{}".format(data_name)
+    model_name = "Unet_M_3ndGen_{}".format(data_name)
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name,model_name))
 
@@ -56,11 +72,23 @@ for trial in range(trials):
 
     model.to(device)
 
+
+    input_transforms = []
+
+    if(random_horizontal_fip):
+        input_transforms.append(RandomHorizontalFlip())
+    if(random_rotation):
+        input_transforms.append(RandomRotation(rotation_range = max_rotation_angle))
+    if(random_crop):
+        input_transforms.append(RandomCropWithAspectRatio( max_crop = crop_order))
+    if(random_noise):
+        input_transforms.append(RandomNoise())
+
+    input_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+    input_transforms.append(ToTensor())
+
     idx_sets = pickle.load(open(idx_sets_file, "rb"))
-    dataset = DataFromH5py(dataset_file,idx_sets,input_type = input_types,purpose =purpose, transform = transforms.Compose([
-                                                       ResizeSample(),
-                                                       ToTensor()
-                                                      ]))
+    dataset = DataFromH5py(dataset_file,idx_sets,input_type = input_types,purpose =purpose, transform = transforms.Compose(input_transforms))
 
 
     idx =  np.random.randint(len(dataset))
@@ -88,8 +116,10 @@ for trial in range(trials):
     label_raw = sample_raw['label']
 
 
+    centroid_list_resized = []
     centroid_list = []
     true_centroid = sample_raw['future_centroid']
+    centroid_list_resized.append((true_centroid[1]*label.shape[1]/label_raw.shape[1],true_centroid[0]*label.shape[0]/label_raw.shape[0]))
     centroid_list.append((true_centroid[1],true_centroid[0]))
 
 
@@ -103,30 +133,32 @@ for trial in range(trials):
 
 
 
+    input = input.detach().cpu().numpy()
+    input = np.squeeze(input)
+
+
     if(input_type == 'masks'):
         plt.figure(figsize=(15,15))
         number_of_plots = 11
 
 
 
-
-
         plt.subplot2grid((4,3),(0,0))
-        plt.imshow(input_raw[2])
+        plt.imshow(input[2])
         plt.title("mask at  t-4")
 
         plt.subplot2grid((4,3),(0,1))
-        plt.imshow(input_raw[1])
+        plt.imshow(input[1])
         plt.title("mask at  t-2")
 
         plt.subplot2grid((4,3),(0,2))
-        plt.imshow(input_raw[0])
+        plt.imshow(input[0])
         plt.title("Mask time t")
 
         plt.subplot2grid((4, 3), (1, 0))
-        plt.imshow(label_raw)
-        plt.title("raw label (t+10)")
-        plt.scatter(*zip(centroid_list[0]), marker='+')
+        plt.imshow(label)
+        plt.title("raw label (t+5)")
+        plt.scatter(*zip(centroid_list_resized[0]), marker='+')
 
 
 
@@ -176,10 +208,10 @@ for trial in range(trials):
         number_of_plots = 11
 
         plt.subplot2grid((4, 3), (0, 0))
-        plt.imshow(input_raw[0])
+        plt.imshow(input[0])
         plt.title("RGB at time t")
         plt.subplot2grid((4, 3), (0, 1))
-        plt.imshow(input_raw[3])
+        plt.imshow(input[3])
         plt.title("mask at  t")
 
         plt.subplot2grid((4, 3), (0, 2))

@@ -32,7 +32,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = [ 'Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = [ 'Football1and2',  'Football2_1person' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -43,8 +43,8 @@ for data_name in data_names:
     #inputs, label and model params
     model_name = "Unet_M_3ndGen{}".format(data_name)
     only_one_mask = False
-    input_types = ['masks']
-    label_type = 'future_mask'
+    input_types = ['bboxes']
+    label_type = 'future_bbox'
     number_of_inputs = 3 # 3 RGB images + 3 masks
 
 
@@ -61,7 +61,7 @@ for data_name in data_names:
     resize_width = 2*resize_height
 
     random_crop = True
-    crop_order = 16
+    crop_order = 15
 
     random_horizontal_fip = True
 

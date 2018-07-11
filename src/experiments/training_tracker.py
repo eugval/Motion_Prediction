@@ -93,7 +93,7 @@ if __name__ == '__main__':
     save = True
 
     data_name = 'Football1and2'
-    model_name = "Unet_MI_3ndGen_{}".format(data_name)
+    model_name = "Unet_M_3ndGen_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
