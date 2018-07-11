@@ -26,7 +26,7 @@ from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomC
 from experiments.early_stopper import EarlyStopper
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = 'cpu'
 print(device)
@@ -41,10 +41,10 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     #inputs, label and model params
-    model_name = "Unet_B_1rstGen{}".format(data_name)
+    model_name = "Unet_M_3ndGen{}".format(data_name)
     only_one_mask = False
-    input_types = ['bboxes']
-    label_type = 'future_bbox'
+    input_types = ['masks']
+    label_type = 'future_mask'
     number_of_inputs = 3 # 3 RGB images + 3 masks
 
 
@@ -57,16 +57,16 @@ for data_name in data_names:
     use_loss_for_early_stopping = True
 
     #data manipulation/augmentation params
-    resize_height =  128
+    resize_height =  64
     resize_width = 2*resize_height
 
     random_crop = True
-    crop_order = 10
+    crop_order = 16
 
     random_horizontal_fip = True
 
-    random_rotation = False
-    max_rotation_angle = 2
+    random_rotation = True
+    max_rotation_angle = 3
 
     random_noise = False
 
@@ -144,12 +144,19 @@ for data_name in data_names:
 
 
     val_set = DataFromH5py(dataset_file, idx_sets, input_type = input_types,
-                           only_one_mask=only_one_mask, purpose ='val',  transform = transforms.Compose(input_transforms))
+                           only_one_mask=only_one_mask, purpose ='val',  transform = transforms.Compose([
+            ResizeSample(height=resize_height, width=resize_width),
+            ToTensor()
+
+        ]))
 
     #Make a dataset with a subset of the training examples for evaluation
     idx_set_eval = {'train': np.random.choice(idx_sets['train'], int(len(train_set)*eval_percent), replace=False)}
     eval_train_set = DataFromH5py(dataset_file,idx_set_eval,
-                                  only_one_mask=only_one_mask,input_type = input_types,transform = transforms.Compose(input_transforms))
+                                  only_one_mask=only_one_mask,input_type = input_types,transform = transforms.Compose([
+                                    ResizeSample(height=resize_height, width=resize_width),
+                                    ToTensor()
+                                        ]))
 
     param_holder['idx_set_eval'] = idx_set_eval
 
@@ -238,6 +245,9 @@ for data_name in data_names:
 
             #Evaluate Model
             #Evaluate on Trainnig set
+
+            model.eval()
+
             train_loss =  loss_metric.evaluate(model, criterion, train_eval_dataloader, device)
             train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device )
             train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device )
@@ -259,6 +269,7 @@ for data_name in data_names:
             tracker.add(val_iou_mask, 'val_iou_mask')
             tracker.add(val_dist, 'val_dist')
 
+            model.train()
             print('Train loss: {}'.format(train_loss))
             print('Train iou bbox: {}'.format(train_iou_bbox))
             print('Train iou mask: {}'.format(train_iou_mask))
