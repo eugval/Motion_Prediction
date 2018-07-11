@@ -1,7 +1,11 @@
 import os
+import sys
 ROOT_DIR = os.path.abspath("../")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
 
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 
 import pickle
 import matplotlib.pyplot as plt
@@ -57,10 +61,10 @@ class TrainingTracker(object):
             plt.subplot(int(number_of_plots/2), 2, i)
             x_ticks = np.arange(len(v)) * self.iterations_per_epoch
             plt.plot(x_ticks, v)
-            if('loss' in k):
-                pass
-            else:
+            if('iou' in k):
                 plt.ylim(0, 1)
+
+
 
             plt.xlabel("Iterations (no of batches with {} batches per epoch)".format(self.iterations_per_epoch))
             plt.ylabel(k)
@@ -88,8 +92,8 @@ if __name__ == '__main__':
 
     save = True
 
-    data_name = 'Crossing1'
-    model_name = "Unet_MI_2ndGen_{}".format(data_name)
+    data_name = 'Football1and2'
+    model_name = "Unet_MI_3ndGen_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
