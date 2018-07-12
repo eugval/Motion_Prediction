@@ -137,7 +137,7 @@ class DistanceViaMode(object):
 
 
 
-#TODO vectorize this
+#TODO vectorize this and split it in two classes one for bbox and one for mask
 class IoUMetric(object):
     name = 'iou'
     types = ['bbox', 'mask']
@@ -194,6 +194,7 @@ class IoUMetric(object):
             ####################
             return (intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum()
 
+    #TODO: resize to original size before evaluating
     def evaluate(self, model, dataloader,  device, threshold = 0.5):
         num_examples = len(dataloader.dataset)
         tot_iou = 0.0

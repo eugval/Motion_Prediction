@@ -1,8 +1,10 @@
 import os
 import sys
 ROOT_DIR = os.path.abspath("../")
+MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 
 import pickle
 import torch
@@ -12,6 +14,7 @@ from experiments.evaluation_metrics import IoUMetric, DistanceViaMean
 from torchvision import transforms
 import cv2
 import numpy as np
+from preprocessing.get_stats import get_histogram
 
 
 
@@ -37,15 +40,12 @@ class ModelEvaluator(object):
 
         self.dataset_file = dataset_file
 
-
-
-
-        self.perfomance_stats = {}
+        self.performance_statistics = {}
+        self.performance_arrays = {}
         self.problematic_datapoints = []
 
 
     def get_performace_stats(self, set):
-
         idx_sets = pickle.load(open(self.params['idx_sets_file'], "rb"))
         dataset = DataFromH5py(self.dataset_file,idx_sets,input_type = self.params['input_types'],
                                     purpose = set, label_type = self.params['label_type'],
@@ -59,12 +59,15 @@ class ModelEvaluator(object):
 
         iou_bboxes = []
         iou_masks = []
-        distance_via_means = []
+        distances_via_mean = []
 
         len_data = len(dataset)
         for i in range(len_data):
             sample = dataset[i]
             raw_sample = dataset.get_raw(i)
+
+            input = sample['input'].float().to(self.device)
+
             while (len(input.size()) < 4):
                 input = input.unsqueeze(0)
 
@@ -78,9 +81,41 @@ class ModelEvaluator(object):
                 output = np.squeeze(output)
                 initial_dims = (dataset.initial_dims[1], dataset.initial_dims[0])
                 output_initial_dims = cv2.resize(output, initial_dims)
+                while (len(output_initial_dims.size()) < 3):
+                    output_initial_dims = output_initial_dims.unsqueeze(0)
+
                 output_after_thresh = output_initial_dims > 0.5
                 label_raw = raw_sample['label']
-                iou_bboxes.append(iou_bbox)
+
+                while (len(label_raw.size()) < 3):
+                    label_raw = label_raw.unsqueeze(0)
+
+                future_centroid =  sample['future_centroid']
+
+                iou_bboxes.append(iou_bbox.get_metric(output_after_thresh,label_raw))
+                iou_masks.append(iou_mask.get_metric(output_after_thresh,label_raw))
+                distances_via_mean.append(distance_via_mean.get_metric(output_initial_dims, future_centroid))
+
+        self.performance_arrays['{}_iou_bboxes'.format(set)] = iou_bboxes
+        self.performance_arrays['{}_iou_masks'.format(set)] = iou_masks
+        self.performance_arrays['{}_distances_via_mean'.format(set)] = distances_via_mean
+
+        self.performance_statistics['{}_iou_bboxes'.format(set)] = (np.mean(iou_bboxes),np.std(iou_bboxes))
+        self.performance_statistics['{}_iou_masks'.format(set)] = (np.mean(iou_masks), np.std(iou_masks))
+        self.performance_statistics['{}_distances_via_mean'.format(set)] = (np.mean(distances_via_mean),
+                                                                            np.std(distances_via_mean))
+
+
+        return self.performance_statistics, self.performance_arrays
+
+    def plot_performance_histograms(self):
+        model_name = self.params['model_name']
+        model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
+        get_histogram(self.performance_statistics, model_name,model_folder)
+
+
+
+
 
 
 
