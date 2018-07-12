@@ -298,9 +298,10 @@ for data_name in data_names:
 
     tracker.record_finished_training()
     pickle.dump(tracker, open(model_history_file, "wb"))
-    print('FINISHED ALL')
 
-    main_func()
+print('FINISHED ALL')
+
+main_func()
 
 
 
