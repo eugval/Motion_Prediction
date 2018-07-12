@@ -50,11 +50,11 @@ for data_name in data_names:
 
 
     #training params
-    num_epochs = 40
+    num_epochs = 55
     batch_size = 32
-    learning_rate = 0.01
+    learning_rate = 0.001
     eval_percent = 0.1
-    patience = 6
+    patience = 8
     use_loss_for_early_stopping = True
 
     #data manipulation/augmentation params
