@@ -1,0 +1,7 @@
+### TODO:
+- Refactor file system  into folder structure
+- Fix bug with distance
+- remake the plotting script
+- add the eval training to the idx sets
+- Make generalised Unet implementation
+- Allow grid search of hyperparameters

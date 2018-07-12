@@ -1,0 +1,95 @@
+import os
+import sys
+ROOT_DIR = os.path.abspath("../")
+sys.path.append(ROOT_DIR)
+sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+
+import pickle
+import torch
+from experiments.training_tracker import TrainingTracker
+from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
+from experiments.evaluation_metrics import IoUMetric, DistanceViaMean
+from torchvision import transforms
+import cv2
+import numpy as np
+
+
+
+class ModelEvaluator(object):
+    def __init__(self, model, weights_file, tracker_file, param_file, save_folder, dataset_file,
+                 reload_tracker = False, cpu_only= False):
+        if(cpu_only):
+            self.device = 'cpu'
+        else:
+            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.params = pickle.load(open(param_file, "rb"))
+        self.training_tracker = pickle.load(open(tracker_file, "rb"))
+        if(reload_tracker):
+           tracker2 = TrainingTracker(self.training_tracker.iterations_per_epoch)
+           tracker2.metrics = self.training_tracker.metrics
+           tracker2.saved_epoch = self.training_tracker.saved_epoch
+           tracker2.finished = self.training_tracker.finished
+           self.training_tracker = tracker2
+
+        self.save_folder = save_folder
+        self.model = model(self.params['number_of_inputs'])
+        model.load_state_dict(torch.load(weights_file, map_location = self.device))
+
+        self.dataset_file = dataset_file
+
+
+
+
+        self.perfomance_stats = {}
+        self.problematic_datapoints = []
+
+
+    def get_performace_stats(self, set):
+
+        idx_sets = pickle.load(open(self.params['idx_sets_file'], "rb"))
+        dataset = DataFromH5py(self.dataset_file,idx_sets,input_type = self.params['input_types'],
+                                    purpose = set, label_type = self.params['label_type'],
+                                    transform = transforms.Compose([
+                                        ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                        ToTensor()
+                                    ]))
+        iou_bbox = IoUMetric(type = 'bbox')
+        iou_mask = IoUMetric(type = 'mask')
+        distance_via_mean = DistanceViaMean()
+
+        iou_bboxes = []
+        iou_masks = []
+        distance_via_means = []
+
+        len_data = len(dataset)
+        for i in range(len_data):
+            sample = dataset[i]
+            raw_sample = dataset.get_raw(i)
+            while (len(input.size()) < 4):
+                input = input.unsqueeze(0)
+
+            with torch.no_grad():
+                if(hasattr(self.model, 'eval_forward')):
+                    output = self.model.eval_forward(input)
+                else:
+                    output = self.model(input)
+
+                output = output.detach().cpu().numpy()
+                output = np.squeeze(output)
+                initial_dims = (dataset.initial_dims[1], dataset.initial_dims[0])
+                output_initial_dims = cv2.resize(output, initial_dims)
+                output_after_thresh = output_initial_dims > 0.5
+                label_raw = raw_sample['label']
+                iou_bboxes.append(iou_bbox)
+
+
+
+
+
+
+
+
+
+
+
+

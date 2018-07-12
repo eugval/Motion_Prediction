@@ -18,7 +18,7 @@ class TrainingTracker(object):
         self.metrics = {}
         self.iterations_per_epoch=iterations_per_epoch
         self.saved_epoch = 0
-        self.finised = False
+        self.finished = False
 
     def add(self, value, name):
         if name in self.metrics:
@@ -91,9 +91,8 @@ class TrainingTracker(object):
 if __name__ == '__main__':
 
     save = True
-
-    data_name = 'Football1and2'
-    model_name = "Unet_M_3ndGen_{}".format(data_name)
+    data_name = 'Football2_1person'
+    model_name = "Unet_B_3ndGen_{}".format(data_name)
 
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))

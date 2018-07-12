@@ -213,7 +213,7 @@ class IoUMetric(object):
 
             labels = labels.detach().cpu().numpy()
 
-            outputs = outputs>threshold
+            outputs = outputs > threshold
             labels = labels.astype('bool')
 
 

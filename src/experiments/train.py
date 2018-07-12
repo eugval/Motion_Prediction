@@ -19,20 +19,20 @@ import torch.nn as nn
 from torchvision import transforms
 from torch.utils.data import  DataLoader
 
-from experiments.model import   SimpleUNet, Unet
+from experiments.model import   SimpleUNet, Unet, UnetShallow
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
 from experiments.early_stopper import EarlyStopper
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 #device = 'cpu'
 print(device)
 
 
-data_names = [ 'Football2_1person' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = [ 'Football2_1person', 'Football1and2', 'Crossing1']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -41,10 +41,11 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     #inputs, label and model params
-    model_name = "Unet_B_3ndGen{}".format(data_name)
+    model = UnetShallow
+    model_name = "UnetShallow_M_1rstGen_{}".format(data_name)
     only_one_mask = False
-    input_types = ['bboxes']
-    label_type = 'future_bbox'
+    input_types = ['masks']
+    label_type = 'future_mask'
     number_of_inputs = 3 # 3 RGB images + 3 masks
 
 
@@ -57,7 +58,7 @@ for data_name in data_names:
     use_loss_for_early_stopping = True
 
     #data manipulation/augmentation params
-    resize_height =  64
+    resize_height =  128
     resize_width = 2*resize_height
 
     random_crop = True
@@ -122,6 +123,7 @@ for data_name in data_names:
 
     #Add the data augmentation
     input_transforms = []
+    eval_transforms = []
 
     if(random_horizontal_fip):
         input_transforms.append(RandomHorizontalFlip())
@@ -135,28 +137,25 @@ for data_name in data_names:
     input_transforms.append(ResizeSample(height= resize_height, width = resize_width))
     input_transforms.append(ToTensor())
 
-    train_set = DataFromH5py(dataset_file,idx_sets,input_type = input_types,only_one_mask=only_one_mask,
+    eval_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+    eval_transforms.append(ToTensor())
+
+    train_set = DataFromH5py(dataset_file,idx_sets,purpose = 'train', input_type = input_types,
+                             label_type= label_type, only_one_mask=only_one_mask,
                              transform = transforms.Compose(input_transforms))
 
     param_holder['future_time'] = train_set.future_time
     param_holder['input_frame_num'] = train_set.number_of_inputs
     param_holder['input_timestep'] = train_set.timestep
 
-
-    val_set = DataFromH5py(dataset_file, idx_sets, input_type = input_types,
-                           only_one_mask=only_one_mask, purpose ='val',  transform = transforms.Compose([
-            ResizeSample(height=resize_height, width=resize_width),
-            ToTensor()
-
-        ]))
+    val_set = DataFromH5py(dataset_file, idx_sets, purpose ='val', input_type = input_types, label_type= label_type,
+                           only_one_mask=only_one_mask,   transform = transforms.Compose(eval_transforms))
 
     #Make a dataset with a subset of the training examples for evaluation
     idx_set_eval = {'train': np.random.choice(idx_sets['train'], int(len(train_set)*eval_percent), replace=False)}
-    eval_train_set = DataFromH5py(dataset_file,idx_set_eval,
-                                  only_one_mask=only_one_mask,input_type = input_types,transform = transforms.Compose([
-                                    ResizeSample(height=resize_height, width=resize_width),
-                                    ToTensor()
-                                        ]))
+    eval_train_set = DataFromH5py(dataset_file,idx_set_eval, purpose = 'train',input_type = input_types,
+                                  label_type= label_type, only_one_mask=only_one_mask,
+                                  transform = transforms.Compose(eval_transforms))
 
     param_holder['idx_set_eval'] = idx_set_eval
 
@@ -175,7 +174,7 @@ for data_name in data_names:
     pickle.dump(param_holder, open(param_holder_file, "wb"))
 
     ###### Define the Model ####
-    model = Unet(number_of_inputs)
+    model = model(number_of_inputs)
     model.to(device)
     print(model)
 

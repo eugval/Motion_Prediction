@@ -26,5 +26,5 @@ sort/
 .idea
 
 # DO NOT ignore these files
-
+!TODO.txt
 !Requirements.txt

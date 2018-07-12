@@ -29,11 +29,12 @@ from matplotlib.offsetbox import AnchoredText
 
 device = torch.device("cpu")
 
-input_type = 'masks'
-input_types = ['masks']
+input_type = 'bboxes'
+input_types = ['bboxes']
+label_type = 'future_bbox'
 
-data_name ="Football1and2"
-trials = 6
+data_name ="Football2_1person"
+trials = 7
 input_num = 3
 purpose = 'val'
 
@@ -56,7 +57,7 @@ random_noise = False
 for trial in range(trials):
     print("Doing {}".format(data_name))
 
-    model_name = "Unet_M_3ndGen_{}".format(data_name)
+    model_name = "Unet_B_3ndGen_{}".format(data_name)
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name,model_name))
 
@@ -88,7 +89,7 @@ for trial in range(trials):
     input_transforms.append(ToTensor())
 
     idx_sets = pickle.load(open(idx_sets_file, "rb"))
-    dataset = DataFromH5py(dataset_file,idx_sets,input_type = input_types,purpose =purpose, transform = transforms.Compose(input_transforms))
+    dataset = DataFromH5py(dataset_file,idx_sets,input_type = input_types,purpose =purpose, label_type= label_type, transform = transforms.Compose(input_transforms))
 
 
     idx =  np.random.randint(len(dataset))
@@ -201,7 +202,71 @@ for trial in range(trials):
         plt.tight_layout()
         plt.savefig(save_path)
         print("done")
-    else:
+    elif(input_type == 'bboxes'):
+        plt.figure(figsize=(15,15))
+        number_of_plots = 11
+
+
+
+        plt.subplot2grid((4,3),(0,0))
+        plt.imshow(input[2])
+        plt.title("mask at  t-4")
+
+        plt.subplot2grid((4,3),(0,1))
+        plt.imshow(input[1])
+        plt.title("mask at  t-2")
+
+        plt.subplot2grid((4,3),(0,2))
+        plt.imshow(input[0])
+        plt.title("Mask time t")
+
+        plt.subplot2grid((4, 3), (1, 0))
+        plt.imshow(label)
+        plt.title("label (t+5)")
+        plt.scatter(*zip(centroid_list_resized[0]), marker='+')
+
+
+
+
+        plt.subplot2grid((4,3),(1,1))
+        plt.imshow(output)
+        plt.title("direct output")
+
+        plt.subplot2grid((4,3),(1,2))
+        plt.imshow(output_initial_dims)
+        plt.title("Thresholded and resized output at 0.5")
+
+        plt.subplot2grid((4,3),(2,0), rowspan=2, colspan=3  )
+        plt.scatter(*zip(*centroid_list))
+        plt.imshow(output_initial_dims)
+        plt.annotate(
+            'true centroid' ,
+            xy=(true_centroid[1],true_centroid[0]), xytext=(20, 20),
+            textcoords='offset points', ha='right', va='bottom',
+            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+
+
+        centroid_via_mean =[ np.round(centroid_via_mean[i]) for i in range(2) ]
+
+
+        plt.annotate(
+            'centroid mean',
+            xy=(centroid_via_mean[1],centroid_via_mean[0]), xytext=(-20, -20),
+            textcoords='offset points', ha='right', va='bottom',
+            bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+            arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0'))
+
+
+
+
+        plt.title("centroids")
+
+        plt.tight_layout()
+        plt.savefig(save_path)
+        print("done")
+    elif(input_type == 'images'):
 
 
         plt.figure(figsize=(15, 15))

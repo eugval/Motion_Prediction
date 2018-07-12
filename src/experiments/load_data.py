@@ -9,7 +9,7 @@ from preprocessing.utils import visualise_image
 
 
 class DataFromH5py(Dataset):
-    def __init__(self, file_path, idx_sets, purpose ='train', input_type = ["masks"], only_one_mask = False, label_type = "future_mask", other_sample_entries = ["future_centroid"],transform=None):
+    def __init__(self, file_path, idx_sets, purpose, input_type, label_type,  only_one_mask = False, other_sample_entries = ["future_centroid"],transform=None):
         #Data and data manipulations
         self.f = h5py.File(file_path, "r")
         self.transform = transform
@@ -108,12 +108,28 @@ class DataFromH5py(Dataset):
                 else:
                     for i in range(inp.shape[2]):
                         inputs_masks.append(inp[:,:,i].astype(int)*255)
+            elif (len(inp.shape) == 2):
+                # Length 2 inputs are bboxes, so convert them to masks
+                for i in range(inp.shape[0]):
+                    bbox_mask = np.zeros(self.initial_dims)
+                    ymin, xmin, ymax, xmax = inp[i,:]
+                    bbox_mask[ymin:ymax,xmin:xmax]=1
+                    inputs_masks.append(bbox_mask)
+                    if (self.only_one_mask):
+                        break
+
             else:
-                raise ValueError("Inputs can have 3 or 4 dimentions")
+                raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
 
         inputs = inputs_images+inputs_masks
 
-        label = self.f[frame][self.label_type].value
+        if(self.label_type == 'future_bbox'):
+            label = np.zeros(self.initial_dims)
+            ymin, xmin, ymax, xmax = self.f[frame][self.label_type].value
+            label[ymin:ymax,xmin:xmax]=1
+        else:
+            label = self.f[frame][self.label_type].value
 
         sample = {'input': inputs, 'label': label}
 
@@ -121,6 +137,10 @@ class DataFromH5py(Dataset):
             sample[key] = self.f[frame][key].value
 
         return sample
+
+    def get_datapoint_index(self,idx):
+        datapoint_idx = self.idx_sets[self.purpose][idx]
+        return datapoint_idx
 
 
 
