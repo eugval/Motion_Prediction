@@ -41,7 +41,7 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     #inputs, label and model params
-    model_name = "Unet_M_3ndGen{}".format(data_name)
+    model_name = "Unet_B_3ndGen{}".format(data_name)
     only_one_mask = False
     input_types = ['bboxes']
     label_type = 'future_bbox'
