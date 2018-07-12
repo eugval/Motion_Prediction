@@ -42,7 +42,7 @@ for data_name in data_names:
     ###### PARAMETERS #######
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_M_1rstGen_{}".format(data_name)
+    model_name = "UnetShallow_M_{}_1".format(data_name)
     only_one_mask = False
     input_types = ['masks']
     label_type = 'future_mask'
