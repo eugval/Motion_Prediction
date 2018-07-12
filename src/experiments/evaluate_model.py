@@ -2,6 +2,7 @@ import os
 import sys
 ROOT_DIR = os.path.abspath("../")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
+PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
@@ -15,6 +16,7 @@ from torchvision import transforms
 import cv2
 import numpy as np
 from preprocessing.get_stats import get_histogram
+from experiments.model import Unet
 
 
 
@@ -108,12 +110,35 @@ class ModelEvaluator(object):
 
         return self.performance_statistics, self.performance_arrays
 
+
+    def save_stats(self):
+        model_name = self.params['model_name']
+        stats_file = os.path.join(MODEL_PATH, "{}/{}_eval_stats.pickle".format(model_name, model_name))
+        pickle.dump(self.performance_statistics, open(stats_file, "wb"))
+
     def plot_performance_histograms(self):
         model_name = self.params['model_name']
+        get_histogram(self.performance_statistics, model_name,self.save_folder)
+
+
+
+if __name__=='__main__':
+    data_names = ['Football2_1person', 'Football1and2']
+    for data_name in data_names:
+        model = Unet
+        model_name = "Unet_M_3ndGen_{}".format(data_name)
+
+        model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name, model_name))
+        model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
+        param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
         model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
-        get_histogram(self.performance_statistics, model_name,model_folder)
+        dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name, data_name))
 
+        evaluator = ModelEvaluator(model,model_file,model_history_file,param_file,model_folder,dataset_file,cpu_only=True)
 
+        evaluator.get_performace_stats('val')
+        evaluator.save_stats()
+        evaluator.plot_performance_histograms()
 
 
 
