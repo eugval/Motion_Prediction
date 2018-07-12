@@ -121,7 +121,7 @@ class ModelEvaluator(object):
         get_histogram(self.performance_statistics, model_name,self.save_folder)
 
 
-
+#TODO: put print statements and dont forget to flush
 if __name__=='__main__':
     data_names = ['Football2_1person', 'Football1and2']
     for data_name in data_names:
