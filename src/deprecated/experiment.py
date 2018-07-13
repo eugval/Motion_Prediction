@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 ROOT_DIR = os.path.abspath("../")
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 PATH_D = os.path.join(ROOT_DIR,"deprecated/MNIST_data/")
 # Import dataset with one-hot encoding of the class labels.

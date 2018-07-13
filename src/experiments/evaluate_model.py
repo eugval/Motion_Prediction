@@ -6,7 +6,8 @@ PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
-
+import matplotlib
+matplotlib.use('Agg')
 import pickle
 import torch
 from experiments.training_tracker import TrainingTracker
@@ -16,17 +17,19 @@ from torchvision import transforms
 import cv2
 import numpy as np
 from preprocessing.get_stats import get_histogram
-from experiments.model import Unet
+from experiments.model import Unet, UnetShallow
 
 
 
 class ModelEvaluator(object):
     def __init__(self, model, weights_file, tracker_file, param_file, save_folder, dataset_file,
-                 reload_tracker = False, cpu_only= False):
+                 reload_tracker = False, cpu_only = False):
         if(cpu_only):
             self.device = 'cpu'
+            self.device_string = 'cpu'
         else:
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            self.device_string = "cuda:0"
         self.params = pickle.load(open(param_file, "rb"))
         self.training_tracker = pickle.load(open(tracker_file, "rb"))
         if(reload_tracker):
@@ -38,7 +41,8 @@ class ModelEvaluator(object):
 
         self.save_folder = save_folder
         self.model = model(self.params['number_of_inputs'])
-        model.load_state_dict(torch.load(weights_file, map_location = self.device))
+        self.model.load_state_dict(torch.load(weights_file, map_location = self.device_string))
+        self.model.to(self.device)
 
         self.dataset_file = dataset_file
 
@@ -48,13 +52,14 @@ class ModelEvaluator(object):
 
 
     def get_performace_stats(self, set):
-        idx_sets = pickle.load(open(self.params['idx_sets_file'], "rb"))
-        dataset = DataFromH5py(self.dataset_file,idx_sets,input_type = self.params['input_types'],
-                                    purpose = set, label_type = self.params['label_type'],
+        dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
+                                    purpose = set, label_type = 'future_mask',
                                     transform = transforms.Compose([
                                         ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
                                         ToTensor()
                                     ]))
+
+
         iou_bbox = IoUMetric(type = 'bbox')
         iou_mask = IoUMetric(type = 'mask')
         distance_via_mean = DistanceViaMean()
@@ -83,19 +88,20 @@ class ModelEvaluator(object):
                 output = np.squeeze(output)
                 initial_dims = (dataset.initial_dims[1], dataset.initial_dims[0])
                 output_initial_dims = cv2.resize(output, initial_dims)
-                while (len(output_initial_dims.size()) < 3):
-                    output_initial_dims = output_initial_dims.unsqueeze(0)
+                while (len(output_initial_dims.shape) < 3):
+                    output_initial_dims_exp = np.expand_dims(output_initial_dims,0)
 
-                output_after_thresh = output_initial_dims > 0.5
+                output_after_thresh = output_initial_dims_exp > 0.5
                 label_raw = raw_sample['label']
 
-                while (len(label_raw.size()) < 3):
-                    label_raw = label_raw.unsqueeze(0)
+                while (len(label_raw.shape) < 3):
+                    label_raw = np.expand_dims(label_raw,0)
 
                 future_centroid =  sample['future_centroid']
 
                 iou_bboxes.append(iou_bbox.get_metric(output_after_thresh,label_raw))
                 iou_masks.append(iou_mask.get_metric(output_after_thresh,label_raw))
+
                 distances_via_mean.append(distance_via_mean.get_metric(output_initial_dims, future_centroid))
 
         self.performance_arrays['{}_iou_bboxes'.format(set)] = iou_bboxes
@@ -125,6 +131,8 @@ class ModelEvaluator(object):
 if __name__=='__main__':
     data_names = ['Football2_1person', 'Football1and2']
     for data_name in data_names:
+        print('dealing with {}'.format(data_name))
+        sys.stdout.flush()
         model = Unet
         model_name = "Unet_M_3ndGen_{}".format(data_name)
 
@@ -134,11 +142,19 @@ if __name__=='__main__':
         model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
         dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name, data_name))
 
-        evaluator = ModelEvaluator(model,model_file,model_history_file,param_file,model_folder,dataset_file,cpu_only=True)
+        evaluator = ModelEvaluator(model,model_file,model_history_file,param_file,model_folder,dataset_file)
 
+        print('getting performance')
+        sys.stdout.flush()
         evaluator.get_performace_stats('val')
+        print('saving stats')
+        sys.stdout.flush()
         evaluator.save_stats()
+
+        print('saving histograms')
+        sys.stdout.flush()
         evaluator.plot_performance_histograms()
+        print('done')
 
 
 

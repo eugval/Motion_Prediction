@@ -18,12 +18,14 @@ import torch.optim as optim
 import torch.nn as nn
 from torchvision import transforms
 from torch.utils.data import  DataLoader
+import json
 
 from experiments.model import   SimpleUNet, Unet, UnetShallow
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
-from experiments.early_stopper import EarlyStopper
+from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
+from experiments.custom_losses import IoULoss
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -32,7 +34,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = [ 'Football2_1person', 'Football1and2', 'Crossing1']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = ['Football1and2','Football2_1person' ]  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -40,9 +42,14 @@ for data_name in data_names:
     sys.stdout.flush()
 
     ###### PARAMETERS #######
+    descriptive_text = '''
+    IoU loss, early stopper at 0.2 and 4 patience
+    '''
+
+
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_M_{}_1".format(data_name)
+    model_name = "UnetShallow_M_{}_4".format(data_name)
     only_one_mask = False
     input_types = ['masks']
     label_type = 'future_mask'
@@ -50,12 +57,15 @@ for data_name in data_names:
 
 
     #training params
-    num_epochs = 55
+    loss_used = 'iou'
+    num_epochs = 60
     batch_size = 32
     learning_rate = 0.001
     eval_percent = 0.1
-    patience = 8
+    patience = 4
     use_loss_for_early_stopping = True
+    use_smoothed_early_stopping = True
+    early_stopper_weight_factor = 0.2
 
     #data manipulation/augmentation params
     resize_height =  128
@@ -75,7 +85,8 @@ for data_name in data_names:
     eval_batch_size = 128
 
     #hyperparam holder for disk saving
-    param_holder ={'data_name': data_name,
+    param_holder ={'descriptive_text':descriptive_text,
+                   'data_name': data_name,
                    'model_name': model_name,
                    'num_epochs': num_epochs,
                    'batch_size': batch_size,
@@ -94,10 +105,17 @@ for data_name in data_names:
                    'random_rotation': random_rotation,
                    'random_noise': random_noise,
                    'max_rotation_angle':max_rotation_angle,
-                   'crop_order':crop_order
+                   'crop_order':crop_order,
+                   'use_smoothed_early_stopping':use_smoothed_early_stopping,
+                   'early_stopper_weight_factor':early_stopper_weight_factor,
+                   'label_type': label_type,
+                   'loss_used': loss_used,
                    }
 
 
+
+    print(param_holder)
+    sys.stdout.flush()
 
     #Retrieving file paths
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name,data_name))
@@ -108,9 +126,13 @@ for data_name in data_names:
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name,model_name))
     param_holder_file = os.path.join(model_folder, "param_holder.pickle")
+    param_holder_json = os.path.join(model_folder, "param_holder.txt")
 
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
+
+    with open(param_holder_json, 'w') as file:
+        file.write(json.dumps(param_holder))
 
 
     start_time = time.time()
@@ -180,7 +202,11 @@ for data_name in data_names:
 
 
     ##### Define the Loss/ Optimiser #####
-    criterion = nn.BCEWithLogitsLoss(size_average = True)
+    if(loss_used =='bce'):
+        criterion = nn.BCEWithLogitsLoss(size_average = True)
+    elif(loss_used == 'iou'):
+        criterion = IoULoss(device = device)
+
     optimizer = optim.RMSprop(model.parameters(), lr = learning_rate)
 
 
@@ -193,7 +219,10 @@ for data_name in data_names:
 
 
     ##### Instantiate Early Stopping Object ######
-    early_stopper = EarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
+    if(use_smoothed_early_stopping):
+        early_stopper = SmoothedEarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
+    else:
+        early_stopper = EarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
 
     print("Ready to train")
     sys.stdout.flush()
@@ -226,7 +255,10 @@ for data_name in data_names:
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            outputs = model(inputs)
+            if(loss_used == 'iou'):
+                outputs = model.eval_forward(inputs)
+            else:
+                outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()

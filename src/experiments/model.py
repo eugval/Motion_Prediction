@@ -82,6 +82,11 @@ class Unet(nn.Module):
         x = self.forward(x)
         return self.sigmoid(x)
 
+    def forward_mask(self,x):
+        x = self.eval_forward(x)
+
+        return torch.ge(x,torch.tensor(0.5))
+
 
 
 
@@ -115,6 +120,11 @@ class UnetShallow(nn.Module):
     def eval_forward(self,x):
         x = self.forward(x)
         return self.sigmoid(x)
+
+    def forward_mask(self,x):
+        x = self.eval_forward(x)
+
+        return torch.ge(x,0.5)
 
 
 

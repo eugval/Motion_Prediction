@@ -161,9 +161,17 @@ class ToTensor(object):
 
 
 class ResizeSample(object):
-    def __init__(self, height = 128, width = 256):
+    def __init__(self, height = 128, width = 256, label_height = 'same', label_width = 'same'):
         self.h = int(height)
         self.w = int(width)
+        if(label_height =='same'):
+            self.l_h = height
+        else:
+            self.l_h = label_height
+        if(label_width =='same'):
+            self.l_w =width
+        else:
+            self.l_w = label_width
 
 
     def __call__(self,sample):
@@ -172,7 +180,7 @@ class ResizeSample(object):
         new_sample = sample
 
         input = cv2.resize(input, (self.w, self.h))
-        label = cv2.resize(label, (self.w, self.h),interpolation=cv2.INTER_NEAREST)
+        label = cv2.resize(label, (self.l_w, self.l_h),interpolation=cv2.INTER_NEAREST)
 
         new_sample['input'] = input
         new_sample['label'] = label
