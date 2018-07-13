@@ -57,7 +57,7 @@ class ModelEvaluator(object):
                                     transform = transforms.Compose([
                                         ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
                                         ToTensor()
-                                    ]))
+                                    ])) #self.params['label_type']
 
 
         iou_bbox = IoUMetric(type = 'bbox')
@@ -88,8 +88,9 @@ class ModelEvaluator(object):
                 output = np.squeeze(output)
                 initial_dims = (dataset.initial_dims[1], dataset.initial_dims[0])
                 output_initial_dims = cv2.resize(output, initial_dims)
-                while (len(output_initial_dims.shape) < 3):
-                    output_initial_dims_exp = np.expand_dims(output_initial_dims,0)
+                output_initial_dims_exp = output_initial_dims
+                while (len(output_initial_dims_exp.shape) < 3):
+                    output_initial_dims_exp = np.expand_dims(output_initial_dims_exp,0)
 
                 output_after_thresh = output_initial_dims_exp > 0.5
                 label_raw = raw_sample['label']
@@ -124,12 +125,12 @@ class ModelEvaluator(object):
 
     def plot_performance_histograms(self):
         model_name = self.params['model_name']
-        get_histogram(self.performance_statistics, model_name,self.save_folder)
+        get_histogram(self.performance_arrays, model_name,self.save_folder)
 
 
 #TODO: put print statements and dont forget to flush
 if __name__=='__main__':
-    data_names = ['Football2_1person', 'Football1and2']
+    data_names = ['Football2_1person','Football1and2']
     for data_name in data_names:
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
@@ -142,7 +143,7 @@ if __name__=='__main__':
         model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
         dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name, data_name))
 
-        evaluator = ModelEvaluator(model,model_file,model_history_file,param_file,model_folder,dataset_file)
+        evaluator = ModelEvaluator(model,model_file,model_history_file,param_file,model_folder,dataset_file, cpu_only=False)
 
         print('getting performance')
         sys.stdout.flush()
