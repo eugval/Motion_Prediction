@@ -34,7 +34,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football1and2','Football2_1person' ]  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = ['Football1and2' ]  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
 
 for data_name in data_names:
@@ -43,17 +43,17 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     descriptive_text = '''
-    IoU loss, early stopper at 0.2 and 4 patience
+    3 images 1 mask, shallow net, IoU loss, early stopper at 0.2 and 4 patience
     '''
 
 
     #inputs, label and model params
     model = UnetShallow
     model_name = "UnetShallow_MI_{}_4".format(data_name)
-    only_one_mask = False
+    only_one_mask = True
     input_types = ['images', 'masks']
     label_type = 'future_mask'
-    number_of_inputs = 12 # 3 RGB images + 3 masks
+    number_of_inputs = 10
 
 
     #training params
