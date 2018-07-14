@@ -40,6 +40,10 @@ class ModelEvaluator(object):
            tracker2.metrics = self.training_tracker.metrics
            tracker2.saved_epoch = self.training_tracker.saved_epoch
            tracker2.finished = self.training_tracker.finished
+           tracker2.baselines = self.training_tracker.baselines
+           if(not tracker2.baselines):
+               tracker2.add_baselines(self.params['baselines_file'])
+
            self.training_tracker = tracker2
 
         self.save_folder = self.params['model_folder']
@@ -233,8 +237,16 @@ if __name__=='__main__':
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
 
+
+        evaluate_perf = True
+        make_histograms = True
+        make_training_plots = True
+        make_qual_plots = True
+
+
         model = Unet
         model_name = "Unet_M_3ndGen_{}".format(data_name)
+
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
 
@@ -257,6 +269,9 @@ if __name__=='__main__':
         if ('model_file' not in params):
             params['model_file'] =  os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
 
+        if ('baselines_file' not in params):
+            params['baselines_file'] =  os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.pickle".format(data_name,data_name))
+
         pickle.dump(params, open(param_file, "wb"))
         ###################################
 
@@ -264,25 +279,29 @@ if __name__=='__main__':
         evaluator = ModelEvaluator(model, param_file, cpu_only=False)
 
 
-        print('getting performance')
-        sys.stdout.flush()
-        evaluator.get_performace_stats('val')
-        print('saving stats')
-        sys.stdout.flush()
-        evaluator.save_stats()
+        if(evaluate_perf):
+            print('getting performance')
+            sys.stdout.flush()
+            evaluator.get_performace_stats('val')
+            print('saving stats')
+            sys.stdout.flush()
+            evaluator.save_stats()
 
-        print('saving histograms')
-        sys.stdout.flush()
-        evaluator.plot_performance_histograms()
+        if(make_histograms):
+            print('saving histograms')
+            sys.stdout.flush()
+            evaluator.plot_performance_histograms()
 
-        print('Making training Plots')
-        sys.stdout.flush()
-        evaluator.plot_training_progression()
+        if(make_training_plots):
+            print('Making training Plots')
+            sys.stdout.flush()
+            evaluator.plot_training_progression()
 
-        print('Making Qualitative Plots')
-        sys.stdout.flush()
-        evaluator.plot_qualitative_vis(8,'train')
-        evaluator.plot_qualitative_vis(8, 'val')
+        if(make_qual_plots):
+            print('Making Qualitative Plots')
+            sys.stdout.flush()
+            evaluator.plot_qualitative_vis(8,'train')
+            evaluator.plot_qualitative_vis(8, 'val')
 
         print('FINISHED')
 

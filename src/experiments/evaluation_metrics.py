@@ -163,35 +163,35 @@ class IoUMetric(object):
                 t_rmin, t_rmax, t_cmin, t_cmax = self.boxMaker.get_bbox_from_mask(true_mask)
 
                 ious.append(iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax]))
-                #####DEBUG - REMOVE ####
-                if(verbose>0):
-                    if(np.isnan(iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax]))):
-                        print('nan in bbox iou')
-                        print('pred and true bbxes:')
-                        print([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax])
-                        print('predicted mask:{}'.format(pred_mask.sum(-1).sum(-1)))
-                        print('true mask: {}'.format(true_mask.sum(-1).sum(-1)))
-                #############################
+                # #####DEBUG - REMOVE ####
+                # if(verbose>0):
+                #     if(np.isnan(iou([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax]))):
+                #         print('nan in bbox iou')
+                #         print('pred and true bbxes:')
+                #         print([p_cmin, p_rmin, p_cmax, p_rmax], [t_cmin, t_rmin, t_cmax, t_rmax])
+                #         print('predicted mask:{}'.format(pred_mask.sum(-1).sum(-1)))
+                #         print('true mask: {}'.format(true_mask.sum(-1).sum(-1)))
+                # #############################
 
             return sum(ious)
         elif(self.type == 'mask'):
-            if(not pred_masks.dtype == 'bool' or not true_masks.dtype =='bool'):
-                pred_masks = pred_masks.astype('bool')
-                true_masks = true_masks.astype('bool')
+            # if(not pred_masks.dtype == 'bool' or not true_masks.dtype =='bool'):
+            #     pred_masks = pred_masks.astype('bool')
+            #     true_masks = true_masks.astype('bool')
             intersection = pred_masks*true_masks
             union = pred_masks + true_masks
 
-            #####DEBUG - REMOVE ####
-            if(verbose>0):
-                if(np.isnan((intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum())):
-                    print('mask ious nan')
-                    print('intesection:')
-                    print(intersection.sum(-1).sum(-1))
-                    print('union:')
-                    print(union.sum(-1).sum(-1))
-                    print('predicted masks:{}'.format(pred_masks.sum(-1).sum(-1)))
-                    print('true masks: {}'.format(true_masks.sum(-1).sum(-1)))
-            ####################
+            # #####DEBUG - REMOVE ####
+            # if(verbose>0):
+            #     if(np.isnan((intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum())):
+            #         print('mask ious nan')
+            #         print('intesection:')
+            #         print(intersection.sum(-1).sum(-1))
+            #         print('union:')
+            #         print(union.sum(-1).sum(-1))
+            #         print('predicted masks:{}'.format(pred_masks.sum(-1).sum(-1)))
+            #         print('true masks: {}'.format(true_masks.sum(-1).sum(-1)))
+            # ####################
             return (intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum()
 
     #TODO: resize to original size before evaluating
@@ -210,9 +210,11 @@ class IoUMetric(object):
 
             outputs = torch.squeeze(outputs, 1)
             outputs = outputs.detach().cpu().numpy()
-
-
             labels = labels.detach().cpu().numpy()
+
+            initial_dims = (dataloader.dataset.initial_dims[1],dataloader.dataset.initial_dims[1])
+            outputs = cv2.resize(outputs, initial_dims)
+            labels = cv2.resize(labels, initial_dims)
 
             outputs = outputs > threshold
             labels = labels.astype('bool')

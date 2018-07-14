@@ -49,7 +49,7 @@ for data_name in data_names:
 
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_MI_{}_4".format(data_name)
+    model_name = "UnetShallow_1M3I_{}_4".format(data_name)
     only_one_mask = True
     input_types = ['images', 'masks']
     label_type = 'future_mask'
@@ -87,6 +87,7 @@ for data_name in data_names:
     #Retrieving file paths
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name,data_name))
     idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
+    baselines_file = os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.pickle".format(data_name,data_name))
 
     #Saving files, folder paths
     model_folder = os.path.join(MODEL_PATH, "{}/".format(model_name))
@@ -127,10 +128,12 @@ for data_name in data_names:
                     'dataset_file': dataset_file,
                     'model_file' : model_file,
                     'model_history_file': model_history_file,
-                    'model_folder': model_folder
+                    'model_folder': model_folder,
+                    'baselines_file': baselines_file,
                     }
 
-    print(param_holder)
+    for k,v in param_holder.items():
+        print('{} : {}'.format(k,v))
     sys.stdout.flush()
 
 

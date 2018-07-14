@@ -19,6 +19,7 @@ class TrainingTracker(object):
         self.iterations_per_epoch=iterations_per_epoch
         self.saved_epoch = 0
         self.finished = False
+        self.baselines = False
 
     def add(self, value, name):
         if name in self.metrics:
@@ -45,6 +46,7 @@ class TrainingTracker(object):
         if(log):
             plt.yscale('log')
 
+
         if(save_path):
             plt.savefig(save_path)
 
@@ -70,6 +72,15 @@ class TrainingTracker(object):
             plt.ylabel(k)
             plt.title(k + " vs number of iterations")
 
+            plt.axvline(x=self.saved_epoch *self.iterations_per_epoch, ymin=0.0, ymax=1.0, color='b')
+
+            if('iou_bbox' in k):
+                plt.axhline(y=self.baselines['mean_iou_bbox'], xmin=0.0, xmax=1.0, color='r')
+            elif('iou_val' in k):
+                plt.axhline(y=self.baselines['mean_iou_mask'], xmin=0.0, xmax=1.0, color='r')
+            elif('dist' in k):
+                plt.axhline(y=self.baselines['mean_dist'], xmin=0.0, xmax=1.0, color='r')
+
             i += 1
 
         plt.tight_layout()
@@ -85,6 +96,8 @@ class TrainingTracker(object):
     def record_finished_training(self):
         self.finished = True
 
+    def add_baselines(self, baseline_file):
+        self.baselines = pickle.load(open(baseline_file, "rb"))
 
 
 
