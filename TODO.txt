@@ -5,3 +5,7 @@
 - add the eval training to the idx sets
 - Make generalised Unet implementation
 - Allow grid search of hyperparameters
+
+- Read papers on IoU metric
+- put all the file paths into global variables or functions
+- add more data augmentation (illumination, contrast color jitter)

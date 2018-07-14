@@ -49,11 +49,11 @@ for data_name in data_names:
 
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_M_{}_4".format(data_name)
+    model_name = "UnetShallow_MI_{}_4".format(data_name)
     only_one_mask = False
-    input_types = ['masks']
+    input_types = ['images', 'masks']
     label_type = 'future_mask'
-    number_of_inputs = 3 # 3 RGB images + 3 masks
+    number_of_inputs = 12 # 3 RGB images + 3 masks
 
 
     #training params
@@ -84,39 +84,6 @@ for data_name in data_names:
     #evaluation params
     eval_batch_size = 128
 
-    #hyperparam holder for disk saving
-    param_holder ={'descriptive_text':descriptive_text,
-                   'data_name': data_name,
-                   'model_name': model_name,
-                   'num_epochs': num_epochs,
-                   'batch_size': batch_size,
-                   'learning_rate': learning_rate,
-                   'eval_percent': eval_percent,
-                   'only_one_mask': only_one_mask,
-                   'patience': patience,
-                   'input_types': input_types,
-                   'number_of_inputs': number_of_inputs,
-                   'eval_batch_size': eval_batch_size,
-                   'use_loss_for_early_stopping':use_loss_for_early_stopping,
-                   'resize_height':resize_height,
-                   'resize_width':resize_width,
-                   'random_crop':random_crop,
-                   'random_horizontal_fip': random_horizontal_fip,
-                   'random_rotation': random_rotation,
-                   'random_noise': random_noise,
-                   'max_rotation_angle':max_rotation_angle,
-                   'crop_order':crop_order,
-                   'use_smoothed_early_stopping':use_smoothed_early_stopping,
-                   'early_stopper_weight_factor':early_stopper_weight_factor,
-                   'label_type': label_type,
-                   'loss_used': loss_used,
-                   }
-
-
-
-    print(param_holder)
-    sys.stdout.flush()
-
     #Retrieving file paths
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name,data_name))
     idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
@@ -130,6 +97,42 @@ for data_name in data_names:
 
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
+
+    # hyperparam holder for disk saving
+    param_holder = {'descriptive_text': descriptive_text,
+                    'data_name': data_name,
+                    'model_name': model_name,
+                    'num_epochs': num_epochs,
+                    'batch_size': batch_size,
+                    'learning_rate': learning_rate,
+                    'eval_percent': eval_percent,
+                    'only_one_mask': only_one_mask,
+                    'patience': patience,
+                    'input_types': input_types,
+                    'number_of_inputs': number_of_inputs,
+                    'eval_batch_size': eval_batch_size,
+                    'use_loss_for_early_stopping': use_loss_for_early_stopping,
+                    'resize_height': resize_height,
+                    'resize_width': resize_width,
+                    'random_crop': random_crop,
+                    'random_horizontal_fip': random_horizontal_fip,
+                    'random_rotation': random_rotation,
+                    'random_noise': random_noise,
+                    'max_rotation_angle': max_rotation_angle,
+                    'crop_order': crop_order,
+                    'use_smoothed_early_stopping': use_smoothed_early_stopping,
+                    'early_stopper_weight_factor': early_stopper_weight_factor,
+                    'label_type': label_type,
+                    'loss_used': loss_used,
+                    'dataset_file': dataset_file,
+                    'model_file' : model_file,
+                    'model_history_file': model_history_file,
+                    'model_folder': model_folder
+                    }
+
+    print(param_holder)
+    sys.stdout.flush()
+
 
     with open(param_holder_json, 'w') as file:
         file.write(json.dumps(param_holder))
