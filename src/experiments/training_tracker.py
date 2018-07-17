@@ -74,9 +74,9 @@ class TrainingTracker(object):
 
             plt.axvline(x=self.saved_epoch *self.iterations_per_epoch, ymin=0.0, ymax=1.0, color='b')
 
-            if('iou_bbox' in k):
+            if('bbox' in k):
                 plt.axhline(y=self.baselines['mean_iou_bbox'], xmin=0.0, xmax=1.0, color='r')
-            elif('iou_val' in k):
+            elif('mask' in k):
                 plt.axhline(y=self.baselines['mean_iou_mask'], xmin=0.0, xmax=1.0, color='r')
             elif('dist' in k):
                 plt.axhline(y=self.baselines['mean_dist'], xmin=0.0, xmax=1.0, color='r')
@@ -87,6 +87,7 @@ class TrainingTracker(object):
 
         if (save_path):
             plt.savefig(save_path)
+            plt.close()
         else:
             plt.show()
 

@@ -12,3 +12,7 @@ class IoULoss(nn.Module):
         union = torch.add(union,-1,intersection)
 
         return torch.add(torch.tensor(1.0).to(self.device),-1,torch.mean(torch.div(torch.sum(torch.sum(intersection,-1),-1),torch.sum(torch.sum(union,-1),-1))))
+
+
+
+

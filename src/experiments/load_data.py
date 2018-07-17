@@ -131,7 +131,7 @@ class DataFromH5py(Dataset):
         else:
             label = self.f[frame][self.label_type].value
 
-        sample = {'input': inputs, 'label': label, 'inputs_images': inputs_images, 'inputs_masks': inputs_masks}
+        sample = {'input': inputs, 'label': label, 'input_images': inputs_images, 'input_masks': inputs_masks}
 
         for key in self.other_sample_entries:
             sample[key] = self.f[frame][key].value

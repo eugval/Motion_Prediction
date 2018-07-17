@@ -37,9 +37,9 @@ def baselines_to_beat(data_file, savepath = False):
         mean_dist += distance_via_mean.get_metric(input_mask,future_centroid)
 
     if(savepath):
-        metrics_to_beat = {'mean_iou_bbox':mean_iou_bbox,
-                         'mean_iou_mask':mean_iou_mask,
-                         'mean_dist':mean_dist}
+        metrics_to_beat = {'mean_iou_bbox':mean_iou_bbox/datapoints,
+                         'mean_iou_mask':mean_iou_mask/datapoints,
+                         'mean_dist':mean_dist/datapoints}
         pickle.dump(metrics_to_beat, open(savepath, "wb"))
 
 
@@ -51,7 +51,8 @@ def baselines_to_beat(data_file, savepath = False):
 if __name__ == '__main__':
 
     names = ['Football1and2', 'Football2_1person', 'Crossing1', 'Crossing2']
-
+    generate = False
+    verify = True
     for name in names:
         data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
         class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
@@ -69,13 +70,20 @@ if __name__ == '__main__':
         target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
         target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
 
+
         print('doing {}'.format(name))
+        if(generate):
+            mean_iou_bbox, mean_iou_mask, mean_dist = baselines_to_beat(dataset_file,metrics_to_beat_file)
 
-        mean_iou_bbox, mean_iou_mask, mean_dist = baselines_to_beat(dataset_file,metrics_to_beat_file)
+            print('The mean iou bbox is {}'.format(mean_iou_bbox))
+            print('The mean iou MASK is {}'.format(mean_iou_mask))
+            print('The mean  dist is {}'.format(mean_dist))
 
-        print('The mean iou bbox is {}'.format(mean_iou_bbox))
-        print('The mean iou MASK is {}'.format(mean_iou_mask))
-        print('The mean  dist is {}'.format(mean_dist))
+        if(verify):
+            stats = pickle.load(open(metrics_to_beat_file, "rb"))
+            print(stats)
+
+
 
 
 

@@ -66,6 +66,7 @@ def get_histogram(stats, data_name, save_folder):
             plt.title('{} {} distribution'.format(data_name,k))
             save_path = os.path.join(save_folder, '{}_{}_ditribution.png'.format(data_name, k))
             plt.savefig(save_path)
+            plt.close()
 
 
 
@@ -73,26 +74,35 @@ def get_histogram(stats, data_name, save_folder):
 
 
 if __name__ =='__main__'  :
-    data_names = [ 'Crossing1', 'Crossing2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+    data_names = [  'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+
+    genrate = False
+    verify = True
 
     for name in data_names:
         data_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name,name))
         save_path = os.path.join(PROCESSED_PATH, "{}/{}_stats.pickle".format(name,name))
         save_folder = os.path.join(PROCESSED_PATH, "{}/".format(name))
 
-        print('doing {}'.format(name))
-        sys.stdout.flush()
-        stats = get_data_stats(data_file, save_path)
-        print('dist_mean:{}'.format(stats['dist_mean']))
-        print('dis_std:{}'.format(stats['dis_std']))
-        print('iou_mask_mean:{}'.format(stats['iou_mask_mean']))
-        print('iou_mask_sdt:{}'.format(stats['iou_mask_sdt']))
-        print('iou_bbox_mean:{}'.format(stats['iou_bbox_mean']))
-        print('iou_bbox_std:{}'.format(stats['iou_bbox_std']))
-        sys.stdout.flush()
+        if(generate):
+            print('doing {}'.format(name))
+            sys.stdout.flush()
+            stats = get_data_stats(data_file, save_path)
+            print('dist_mean:{}'.format(stats['dist_mean']))
+            print('dis_std:{}'.format(stats['dis_std']))
+            print('iou_mask_mean:{}'.format(stats['iou_mask_mean']))
+            print('iou_mask_sdt:{}'.format(stats['iou_mask_sdt']))
+            print('iou_bbox_mean:{}'.format(stats['iou_bbox_mean']))
+            print('iou_bbox_std:{}'.format(stats['iou_bbox_std']))
+            sys.stdout.flush()
 
 
-        get_histogram(stats,name,save_folder)
+            get_histogram(stats,name,save_folder)
+
+        if(verify):
+            print("looking at {}".format(name))
+            stats = pickle.load(open(save_path, "rb"))
+            print(stats)
 
 
 

@@ -212,9 +212,9 @@ class IoUMetric(object):
             outputs = outputs.detach().cpu().numpy()
             labels = labels.detach().cpu().numpy()
 
-            initial_dims = (dataloader.dataset.initial_dims[1],dataloader.dataset.initial_dims[1])
-            outputs = cv2.resize(outputs, initial_dims)
-            labels = cv2.resize(labels, initial_dims)
+            # initial_dims = (dataloader.dataset.initial_dims[1],dataloader.dataset.initial_dims[0])
+            # outputs = cv2.resize(outputs, initial_dims)
+            # labels = cv2.resize(labels, initial_dims)
 
             outputs = outputs > threshold
             labels = labels.astype('bool')
@@ -229,7 +229,7 @@ class IoUMetric(object):
 class LossMetric(object):
     name = 'loss'
 
-    def evaluate(self,model, criterion, dataloader, device):
+    def evaluate(self,model, criterion, loss_used, dataloader, device):
         tot_loss = 0.0
         count = 0
         for i, data in enumerate(dataloader):
@@ -237,7 +237,11 @@ class LossMetric(object):
             labels = data['label'].float().to(device)
             labels = labels.unsqueeze(1)
 
-            outputs = model(inputs)
+            if(loss_used=='iou'):
+                outputs = model.eval_forward(inputs)
+            else:
+                outputs = model(inputs)
+
             count+=1
 
             tot_loss += criterion(outputs, labels).item()

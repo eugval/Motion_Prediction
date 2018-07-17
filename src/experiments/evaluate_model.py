@@ -6,6 +6,7 @@ PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 import matplotlib
 matplotlib.use('Agg')
 import pickle
@@ -19,6 +20,8 @@ import numpy as np
 from preprocessing.get_stats import get_histogram
 from experiments.model import Unet, UnetShallow
 import matplotlib.pyplot as plt
+from deprecated.experiment import main_func
+import json
 
 
 
@@ -40,8 +43,7 @@ class ModelEvaluator(object):
            tracker2.metrics = self.training_tracker.metrics
            tracker2.saved_epoch = self.training_tracker.saved_epoch
            tracker2.finished = self.training_tracker.finished
-           tracker2.baselines = self.training_tracker.baselines
-           if(not tracker2.baselines):
+           if(not hasattr(self.training_tracker,"baselines") or not self.training_tracker.baselines):
                tracker2.add_baselines(self.params['baselines_file'])
 
            self.training_tracker = tracker2
@@ -50,6 +52,7 @@ class ModelEvaluator(object):
         self.model = model(self.params['number_of_inputs'])
         self.model.load_state_dict(torch.load(self.params['model_file'], map_location = self.device_string))
         self.model.to(self.device)
+        self.model.eval()
 
         self.dataset_file = self.params['dataset_file']
 
@@ -58,9 +61,10 @@ class ModelEvaluator(object):
         self.problematic_datapoints = []
 
 
+
     def get_performace_stats(self, set):
         dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
-                                    purpose = set, label_type = self.params['label_type'],
+                                    purpose = set, label_type = self.params['label_type'], only_one_mask=self.params['only_one_mask'],
                                     transform = transforms.Compose([
                                         ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
                                         ToTensor()
@@ -75,25 +79,120 @@ class ModelEvaluator(object):
         iou_masks = []
         distances_via_mean = []
 
+
+        average_prediction_input_iou = 0.0
+        average_label_input_iou = 0.0
+
+        iou_bboxes_on_no_movement = []
+        iou_masks_on_no_movement = []
+        distance_via_mean_on_no_movement = []
+
+
+        iou_bboxes_on_moderate_movement = []
+        iou_masks_on_moderate_movement = []
+        distance_via_mean_on_moderate_movement = []
+
+        iou_bboxes_on_high_movement = []
+        iou_masks_on_high_movement = []
+        distance_via_mean_on_high_movement = []
+
+
+
+
+
         len_data = len(dataset)
         for i in range(len_data):
             sample = dataset[i]
             raw_sample = dataset.get_raw(i)
-            output, output_initial_dims, output_after_thresh, label_raw, future_centroid = self.__perform_inference__(sample,raw_sample, dataset.initial_dims)
+            output, output_initial_dims, output_after_thresh, label_raw, future_centroid = self.__perform_inference__(sample,
+                                                                                                                      raw_sample,
+                                                                                                                      dataset.initial_dims)
 
             with torch.no_grad():
-                iou_bboxes.append(iou_bbox.get_metric(output_after_thresh,label_raw))
-                iou_masks.append(iou_mask.get_metric(output_after_thresh,label_raw))
-                distances_via_mean.append(distance_via_mean.get_metric(output_initial_dims, future_centroid))
+                iou_bbox_inference = iou_bbox.get_metric(output_after_thresh,label_raw)
+                iou_mask_inference = iou_mask.get_metric(output_after_thresh,label_raw)
+                dist_inference = distance_via_mean.get_metric(output_initial_dims, future_centroid)
+
+                raw_input_mask = raw_sample['input_masks'][0]
+                while (len(raw_input_mask.shape) < 3):
+                    raw_input_mask = np.expand_dims(raw_input_mask, 0)
+
+                iou_bbox_input_label = iou_bbox.get_metric(raw_input_mask,label_raw)
+                iou_bbox_input_pred = iou_bbox.get_metric(raw_input_mask,output_after_thresh)
+
+            #Add full statistics
+            iou_bboxes.append(iou_bbox_inference)
+            iou_masks.append(iou_mask_inference)
+            distances_via_mean.append(dist_inference)
+
+            #Add point stats
+            average_prediction_input_iou += iou_bbox_input_pred
+            average_label_input_iou += iou_bbox_input_label
+
+            #Add stratified stats
+            if(iou_bbox_input_label > 0.9):
+                iou_bboxes_on_no_movement.append(iou_bbox_inference)
+                iou_masks_on_no_movement.append(iou_mask_inference)
+                distance_via_mean_on_no_movement.append(dist_inference)
+
+            elif(iou_bbox_input_label < 0.6 and iou_bbox_input_label > 0.4):
+                iou_bboxes_on_moderate_movement.append(iou_bbox_inference)
+                iou_masks_on_moderate_movement.append(iou_mask_inference)
+                distance_via_mean_on_moderate_movement.append(dist_inference)
+
+            elif(iou_bbox_input_label == 0) :
+                iou_bboxes_on_high_movement.append(iou_bbox_inference)
+                iou_masks_on_high_movement.append(iou_mask_inference)
+                distance_via_mean_on_high_movement.append(dist_inference)
+
+
+
+        average_prediction_input_iou =  average_prediction_input_iou/len_data
+        average_label_input_iou = average_label_input_iou/len_data
+
+
 
         self.performance_arrays['{}_iou_bboxes'.format(set)] = iou_bboxes
         self.performance_arrays['{}_iou_masks'.format(set)] = iou_masks
         self.performance_arrays['{}_distances_via_mean'.format(set)] = distances_via_mean
 
+        self.performance_arrays['{}_iou_bboxes_on_no_movement'.format(set)] = iou_bboxes_on_no_movement
+        self.performance_arrays['{}_iou_masks_on_no_movement'.format(set)] = iou_masks_on_no_movement
+
+        self.performance_arrays['{}_iou_bboxes_on_moderate_movement'.format(set)] = iou_bboxes_on_moderate_movement
+        self.performance_arrays['{}_iou_masks_on_moderate_movement'.format(set)] = iou_masks_on_moderate_movement
+
+        self.performance_arrays['{}_iou_bboxes_on_high_movement'.format(set)] = iou_bboxes_on_high_movement
+        self.performance_arrays['{}_iou_masks_on_high_movement'.format(set)] = iou_masks_on_high_movement
+
+
+
         self.performance_statistics['{}_iou_bboxes'.format(set)] = (np.mean(iou_bboxes),np.std(iou_bboxes))
         self.performance_statistics['{}_iou_masks'.format(set)] = (np.mean(iou_masks), np.std(iou_masks))
         self.performance_statistics['{}_distances_via_mean'.format(set)] = (np.mean(distances_via_mean),
                                                                             np.std(distances_via_mean))
+
+        self.performance_statistics['{}_iou_bboxes_on_no_movement'.format(set)] = (np.mean(iou_bboxes_on_no_movement),np.std(iou_bboxes_on_no_movement))
+        self.performance_statistics['{}_iou_masks_on_no_movement'.format(set)] = (np.mean(iou_masks_on_no_movement), np.std(iou_masks_on_no_movement))
+        self.performance_statistics['{}_distance_via_mean_on_no_movement'.format(set)] = (np.mean(distance_via_mean_on_no_movement),
+                                                                            np.std(distance_via_mean_on_no_movement))
+
+        self.performance_statistics['{}_iou_bboxes_on_moderate_movement'.format(set)] = (np.mean(iou_bboxes_on_moderate_movement),np.std(iou_bboxes_on_moderate_movement))
+        self.performance_statistics['{}_iou_masks_on_moderate_movement'.format(set)] = (np.mean(iou_masks_on_moderate_movement), np.std(iou_masks_on_moderate_movement))
+        self.performance_statistics['{}_distance_via_mean_on_moderate_movement'.format(set)] = (np.mean(distance_via_mean_on_moderate_movement),
+                                                                            np.std(distance_via_mean_on_moderate_movement))
+
+        self.performance_statistics['{}_iou_bboxes_on_high_movement'.format(set)] = (np.mean(iou_bboxes_on_high_movement),np.std(iou_bboxes_on_high_movement))
+        self.performance_statistics['{}_iou_masks_on_high_movement'.format(set)] = (np.mean(iou_masks_on_high_movement), np.std(iou_masks_on_high_movement))
+        self.performance_statistics['{}_distance_via_mean_on_high_movement'.format(set)] = (np.mean(distance_via_mean_on_high_movement),
+                                                                            np.std(distance_via_mean_on_high_movement))
+
+
+
+
+        self.performance_statistics['{}average_label_input_iou'.format(set)] = average_label_input_iou
+        self.performance_statistics['{}average_prediction_input_iou'.format(set)] = average_prediction_input_iou
+
 
 
         return self.performance_statistics, self.performance_arrays
@@ -102,7 +201,10 @@ class ModelEvaluator(object):
     def save_stats(self):
         model_name = self.params['model_name']
         stats_file = os.path.join(MODEL_PATH, "{}/{}_eval_stats.pickle".format(model_name, model_name))
+        stats_text_file = os.path.join(MODEL_PATH, "{}/{}_eval_stats.json".format(model_name, model_name))
         pickle.dump(self.performance_statistics, open(stats_file, "wb"))
+        with open(stats_text_file, 'w') as file:
+            file.write(json.dumps(self.performance_statistics))
 
     def plot_performance_histograms(self):
         model_name = self.params['model_name']
@@ -115,7 +217,7 @@ class ModelEvaluator(object):
     def plot_qualitative_vis(self, trials, set, verbose = 1):
 
         dataset = DataFromH5py(self.dataset_file, self.params['idx_sets'], input_type=self.params['input_types'],
-                               purpose=set, label_type='future_mask',
+                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
                                transform=transforms.Compose([
                                    ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
                                    ToTensor()
@@ -123,8 +225,8 @@ class ModelEvaluator(object):
 
         distance_via_mean = DistanceViaMean()
 
-        for trial in trials:
-            if (verbose > 0): print("Qualitative plot () for {} set of {}".format(trial,set,self.params['model_name'] ))
+        for trial in range(trials):
+            if (verbose > 0): print("Qualitative plot {} for {} set of {}".format(trial,set,self.params['model_name'] ))
             save_path = os.path.join(self.save_folder, "Qualitative_plot_{}_on_{}_set.png".format(trial,set))
 
             idx = np.random.randint(len(dataset))
@@ -140,8 +242,10 @@ class ModelEvaluator(object):
             input_masks = raw_sample['input_masks']
             resized_input = np.squeeze(sample['input'].detach().cpu().numpy())
             resized_label = np.squeeze(sample['label'])
+            label_raw = np.squeeze(label_raw)
 
-            delta_outputs = np.dstack([output_after_thresh>0.5, label_raw, np.zeros(label_raw.shape)])
+            delta_outputs = np.dstack([output_initial_dims>0.5, label_raw, input_masks[0]/255])
+
 
             plt.figure(figsize=(15, 15))
 
@@ -170,8 +274,10 @@ class ModelEvaluator(object):
             plt.imshow(output)
             plt.title("Direct model output")
 
+
+
             plt.subplot2grid((4, 3), (1, 2))
-            plt.imshow(output_initial_dims > 0.5)
+            plt.imshow(output_initial_dims>0.5 )
             plt.title("Resized output and thresholded at 0.5")
 
             plt.subplot2grid((4, 3), (2, 0), rowspan=2, colspan=3)
@@ -196,6 +302,7 @@ class ModelEvaluator(object):
 
             plt.tight_layout()
             plt.savefig(save_path)
+            plt.close()
             if(verbose>0): print("Done")
 
 
@@ -211,9 +318,25 @@ class ModelEvaluator(object):
             else:
                 output = self.model(input)
 
+
+            # ########   DEBUG  ###########
+            # output = torch.squeeze(output, 1)
+            # output = output.detach().cpu().numpy()
+            # output_after_thresh = output > 0.5
+            # output = np.squeeze(output)
+            #
+            # output_initial_dims = output
+            #
+            # label_raw = sample['label'].detach().cpu().numpy()
+            #
+            # while (len(label_raw.shape) < 3):
+            #     label_raw = np.expand_dims(label_raw, 0)
+            # label_raw.astype('bool')
+            #
+            ##############################################
+
             output = output.detach().cpu().numpy()
             output = np.squeeze(output)
-
             initial_dims = (dims[1], dims[0])
             output_initial_dims = cv2.resize(output, initial_dims)
             output_initial_dims_exp = output_initial_dims
@@ -226,14 +349,17 @@ class ModelEvaluator(object):
             while (len(label_raw.shape) < 3):
                 label_raw = np.expand_dims(label_raw, 0)
 
-            future_centroid = sample['future_centroid']
 
+
+
+
+            future_centroid = sample['future_centroid']
             return output, output_initial_dims, output_after_thresh, label_raw, future_centroid
 
 
 if __name__=='__main__':
-    data_names = ['Football2_1person','Football1and2']
-    for data_name in data_names:
+    data_names = [ ('Football1and2', 5)]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    for data_name, number in data_names:
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
 
@@ -244,8 +370,8 @@ if __name__=='__main__':
         make_qual_plots = True
 
 
-        model = Unet
-        model_name = "Unet_M_3ndGen_{}".format(data_name)
+        model = UnetShallow
+        model_name = "UnetShallow_MI_{}_{}".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
@@ -276,7 +402,9 @@ if __name__=='__main__':
         ###################################
 
 
-        evaluator = ModelEvaluator(model, param_file, cpu_only=False)
+        evaluator = ModelEvaluator(model, param_file, cpu_only = False)
+
+        print(evaluator.device)
 
 
         if(evaluate_perf):
@@ -300,10 +428,12 @@ if __name__=='__main__':
         if(make_qual_plots):
             print('Making Qualitative Plots')
             sys.stdout.flush()
-            evaluator.plot_qualitative_vis(8,'train')
-            evaluator.plot_qualitative_vis(8, 'val')
+            evaluator.plot_qualitative_vis(5,'train')
+            evaluator.plot_qualitative_vis(5, 'val')
 
         print('FINISHED')
+
+main_func()
 
 
 

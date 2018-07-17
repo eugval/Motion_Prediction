@@ -19,6 +19,7 @@ import torch.nn as nn
 from torchvision import transforms
 from torch.utils.data import  DataLoader
 import json
+import datetime
 
 from experiments.model import   SimpleUNet, Unet, UnetShallow
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
@@ -34,7 +35,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = ['Football1and2' ]  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+data_names = [ 'Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
 
 
 for data_name in data_names:
@@ -43,23 +44,25 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     descriptive_text = '''
-    3 images 1 mask, shallow net, IoU loss, early stopper at 0.2 and 4 patience
+    Trying out adam
     '''
 
 
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_1M3I_{}_4".format(data_name)
-    only_one_mask = True
+    model_name = "UnetShallow_MI_{}_5".format(data_name)
+    only_one_mask = False
     input_types = ['images', 'masks']
     label_type = 'future_mask'
-    number_of_inputs = 10
+    number_of_inputs = 12
 
 
     #training params
     loss_used = 'iou'
+    optimiser_used = 'adam'
+    momentum = 0.9
     num_epochs = 60
-    batch_size = 32
+    batch_size = 2
     learning_rate = 0.001
     eval_percent = 0.1
     patience = 4
@@ -74,7 +77,7 @@ for data_name in data_names:
     random_crop = True
     crop_order = 15
 
-    random_horizontal_fip = True
+    random_horizontal_flip = True
 
     random_rotation = True
     max_rotation_angle = 3
@@ -94,7 +97,7 @@ for data_name in data_names:
     model_file = os.path.join(MODEL_PATH, "{}/{}.pkl".format(model_name,model_name))
     model_history_file = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name,model_name))
     param_holder_file = os.path.join(model_folder, "param_holder.pickle")
-    param_holder_json = os.path.join(model_folder, "param_holder.txt")
+    param_holder_json = os.path.join(model_folder, "param_holder.json")
 
     if not os.path.exists(model_folder):
         os.makedirs(model_folder)
@@ -116,7 +119,7 @@ for data_name in data_names:
                     'resize_height': resize_height,
                     'resize_width': resize_width,
                     'random_crop': random_crop,
-                    'random_horizontal_fip': random_horizontal_fip,
+                    'random_horizontal_flip': random_horizontal_flip,
                     'random_rotation': random_rotation,
                     'random_noise': random_noise,
                     'max_rotation_angle': max_rotation_angle,
@@ -130,6 +133,9 @@ for data_name in data_names:
                     'model_history_file': model_history_file,
                     'model_folder': model_folder,
                     'baselines_file': baselines_file,
+                    'optimiser_used':optimiser_used,
+                    'momentum':momentum,
+                    'datetime': str(datetime.datetime.now())
                     }
 
     for k,v in param_holder.items():
@@ -153,7 +159,7 @@ for data_name in data_names:
     input_transforms = []
     eval_transforms = []
 
-    if(random_horizontal_fip):
+    if(random_horizontal_flip):
         input_transforms.append(RandomHorizontalFlip())
     if(random_rotation):
         input_transforms.append(RandomRotation(rotation_range = max_rotation_angle))
@@ -190,11 +196,9 @@ for data_name in data_names:
     train_dataloader = DataLoader(train_set, batch_size= batch_size,
                             shuffle=True)
 
-    val_dataloader = DataLoader(val_set, batch_size= eval_batch_size,
-                            shuffle=True)
+    val_dataloader = DataLoader(val_set, batch_size= eval_batch_size)
 
-    train_eval_dataloader = DataLoader(eval_train_set, batch_size= eval_batch_size,
-                            shuffle=True)
+    train_eval_dataloader = DataLoader(eval_train_set, batch_size= eval_batch_size)
 
 
 
@@ -213,7 +217,13 @@ for data_name in data_names:
     elif(loss_used == 'iou'):
         criterion = IoULoss(device = device)
 
-    optimizer = optim.RMSprop(model.parameters(), lr = learning_rate)
+
+    if(optimiser_used == 'rmsprop'):
+        optimizer = optim.RMSprop(model.parameters(), lr = learning_rate)
+    elif(optimiser_used == 'adam'):
+        optimizer = optim.Adam(model.parameters(), lr = learning_rate)
+    elif(optimiser_used == 'sgd'):
+        torch.optim.SGD(model.parameters(), lr = learning_rate, momentum = momentum)
 
 
     #### Instantiate history tracking objects ####
@@ -261,6 +271,7 @@ for data_name in data_names:
             optimizer.zero_grad()
 
             # forward + backward + optimize
+            #TODO: add the sigmoid in the Iou Loss so that I dont have to have it here
             if(loss_used == 'iou'):
                 outputs = model.eval_forward(inputs)
             else:
@@ -285,7 +296,7 @@ for data_name in data_names:
 
             model.eval()
 
-            train_loss =  loss_metric.evaluate(model, criterion, train_eval_dataloader, device)
+            train_loss =  loss_metric.evaluate(model, criterion, loss_used, train_eval_dataloader, device)
             train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device )
             train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device )
             train_dist = distance_via_mean.evaluate(model,train_eval_dataloader,device)
@@ -296,7 +307,7 @@ for data_name in data_names:
             tracker.add(train_dist, 'train_dist')
 
             #Evaluate on Valisation Set
-            val_loss = loss_metric.evaluate(model, criterion, val_dataloader, device)
+            val_loss = loss_metric.evaluate(model, criterion,loss_used, val_dataloader, device)
             val_iou_bbox = iou_bbox.evaluate(model,val_dataloader, device )
             val_iou_mask = iou_mask.evaluate(model,val_dataloader, device )
             val_dist = distance_via_mean.evaluate(model,val_dataloader,device)
