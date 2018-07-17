@@ -26,7 +26,7 @@ from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, Los
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
 from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
-from experiments.custom_losses import IoULoss
+from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -35,7 +35,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 
-data_names = [ 'Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
+data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
 
 
 for data_name in data_names:
@@ -44,13 +44,12 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     descriptive_text = '''
-    Trying out adam
-    '''
+    Distance loss only '''
 
 
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_MI_{}_5".format(data_name)
+    model_name = "UnetShallow_MI_{}_6_test".format(data_name)
     only_one_mask = False
     input_types = ['images', 'masks']
     label_type = 'future_mask'
@@ -58,11 +57,11 @@ for data_name in data_names:
 
 
     #training params
-    loss_used = 'iou'
+    loss_used = 'dist'
     optimiser_used = 'adam'
     momentum = 0.9
     num_epochs = 60
-    batch_size = 2
+    batch_size = 32
     learning_rate = 0.001
     eval_percent = 0.1
     patience = 4
@@ -216,6 +215,10 @@ for data_name in data_names:
         criterion = nn.BCEWithLogitsLoss(size_average = True)
     elif(loss_used == 'iou'):
         criterion = IoULoss(device = device)
+    elif(loss_used == 'dist'):
+        criterion = DistanceLoss(device = device)
+    elif(loss_used == 'iou_plus_dist'):
+        criterion = DistancePlusIoU(device = device)
 
 
     if(optimiser_used == 'rmsprop'):
@@ -263,6 +266,8 @@ for data_name in data_names:
             labels = data['label'].float().to(device)
             labels = labels.unsqueeze(1)
 
+            future_centroids = data['future_centroid'].float().to(device)
+
 
             data_load_time = (time.time() - start_time) - data_load_time
             backprop_time = (time.time() - start_time)
@@ -272,14 +277,24 @@ for data_name in data_names:
 
             # forward + backward + optimize
             #TODO: add the sigmoid in the Iou Loss so that I dont have to have it here
-            if(loss_used == 'iou'):
+            if(loss_used == 'iou' ):
                 outputs = model.eval_forward(inputs)
+                loss = criterion(outputs, labels)
+            elif(loss_used == 'dist'):
+                 outputs = model.eval_forward(inputs)
+                 loss = criterion(outputs, future_centroids)
+            elif( loss_used == 'iou_plus_dist'):
+                outputs = model.eval_forward(inputs)
+                loss = criterion(outputs, labels, future_centroids)
             else:
                 outputs = model(inputs)
-            loss = criterion(outputs, labels)
+                loss = criterion(outputs, labels)
+
+
             loss.backward()
             optimizer.step()
 
+            break
 
             backprop_time = (time.time() - start_time) - backprop_time
 
@@ -351,22 +366,3 @@ for data_name in data_names:
 print('FINISHED ALL')
 
 main_func()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

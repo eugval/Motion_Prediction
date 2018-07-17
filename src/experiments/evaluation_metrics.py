@@ -235,15 +235,24 @@ class LossMetric(object):
         for i, data in enumerate(dataloader):
             inputs = data['input'].float().to(device)
             labels = data['label'].float().to(device)
+            future_centroids = data['future_centroid'].float().to(device)
             labels = labels.unsqueeze(1)
 
-            if(loss_used=='iou'):
+            if(loss_used == 'iou' ):
                 outputs = model.eval_forward(inputs)
+                tot_loss += criterion(outputs, labels).item()
+            elif(loss_used == 'dist'):
+                 outputs = model.eval_forward(inputs)
+                 tot_loss += criterion(outputs, future_centroids).item()
+            elif( loss_used == 'iou_plus_dist'):
+                outputs = model.eval_forward(inputs)
+                tot_loss += criterion(outputs, labels, future_centroids).item()
             else:
                 outputs = model(inputs)
+                tot_loss += criterion(outputs, labels).item()
 
             count+=1
 
-            tot_loss += criterion(outputs, labels).item()
+
         return tot_loss / count
 

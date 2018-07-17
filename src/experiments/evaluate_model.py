@@ -358,7 +358,7 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    data_names = [ ('Football1and2', 5)]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    data_names = [ ('Crossing1', 4)]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
