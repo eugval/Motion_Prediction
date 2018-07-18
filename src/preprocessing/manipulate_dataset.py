@@ -3,6 +3,9 @@ import sys
 ROOT_DIR = os.path.abspath("../")
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
+sys.path.append(os.path.join(ROOT_DIR,"experiments"))
+
+from experiments.evaluation_metrics import IoUMetric
 import pickle
 import h5py
 import numpy as np
@@ -112,6 +115,36 @@ class MakeDataSplits(object):
         f_dset.close()
 
         return self.idx_sets
+
+
+
+    def discard_based_on_iou(self,dataset_file, high_thresh =1 , low_thresh=0, idx_sets_file = None, save_path=None):
+
+        f = h5py.File(dataset_file,'r')
+        if(idx_sets_file is not None):
+            idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
+            self.idx_sets = idx_sets
+
+        iou_bbox_calculator = IoUMetric(type = 'bbox')
+        for k,v  in self.idx_sets.items():
+            indices_to_delete = []
+            for i, idx in enumerate(v):
+                datapoint = 'datapoint{}'.format(idx)
+                input_mask = f[datapoint]['masks'].value[:,:,0]
+                future_mask = f[datapoint]['future_mask'].value
+                iou_bbox = iou_bbox_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
+
+                if(iou_bbox > high_thresh):
+                    indices_to_delete.append(i)
+                elif(iou_bbox <  low_thresh):
+                    indices_to_delete.append(i)
+            self.idx_sets[k]=np.delete(self.idx_sets[k], indices_to_delete)
+
+        if(save_path is not None):
+             self.save_idx_sets(save_path)
+
+        return self.idx_sets
+
 
 
 
@@ -254,9 +287,13 @@ def convert_to_folder_structure(data_file, target_folder):
 
 if __name__=='__main__':
 
+
+    print("starting")
+    sys.stdout.flush()
     start_time = time.time()
-    make_split = True
+    make_split = False
     merge = False
+    discard = True
 
     # Path to the processed folders in the data
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
@@ -266,17 +303,38 @@ if __name__=='__main__':
 
         for name, config in names:
             print("Doing {} .... ".format(name))
+            sys.stdout.flush()
             resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
             dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
             set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
 
 
-            data_splitter = MakeDataSplits(dataset_file, resized_file,)
+            data_splitter = MakeDataSplits(dataset_file, resized_file)
             data_splitter.make_frame_split('test', 0)
             data_splitter.make_frame_split( 'val', 0.1, save_path = set_idx_file)
 
             print("finished")
             print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
+
+
+    if(discard):
+        names = [("Football1and2",2) ,("Crossing1",1)]
+
+        for name, config in names:
+            print("Doing {} .... ".format(name))
+            sys.stdout.flush()
+
+            resized_file = os.path.join(PROCESSED_PATH, "{}/{}_resized.hdf5".format(name,name))
+            dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(name, name))
+            set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
+            set_idx_file_high_movement = os.path.join(PROCESSED_PATH, "{}/{}_sets_high_movement.pickle".format(name, name))
+
+            data_splitter = MakeDataSplits(dataset_file, resized_file)
+            data_splitter.discard_based_on_iou(dataset_file, high_thresh = 0.8, idx_sets_file = set_idx_file, save_path=set_idx_file_high_movement)
+            print("finished")
+            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
 
 
     if(merge):

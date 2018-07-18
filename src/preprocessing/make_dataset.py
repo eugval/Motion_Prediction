@@ -64,7 +64,10 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
     #Grab the future frame
     frame_number = i+int(future_time)
     mask_idx = get_idx_from_id(id,f,frame_number)
-    gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
+    use_gaussian = False
+    if('gaussians' in f['frame{}'.format(frame_number)]):
+        use_gaussian = True
+        gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
     future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,mask_idx]
     future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[mask_idx,:]
     future_bbox =  f['frame{}'.format(frame_number)]['rois'].value[mask_idx,:]
@@ -84,7 +87,8 @@ def add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
     f2.create_dataset('datapoint{}/future_mask'.format(datapoint_index), data=future_mask)
     f2.create_dataset('datapoint{}/future_centroid'.format(datapoint_index), data=future_centroid)
     f2.create_dataset('datapoint{}/future_bbox'.format(datapoint_index), data=future_bbox)
-    f2.create_dataset('datapoint{}/gaussian_mask'.format(datapoint_index),data=gaussian_mask)
+    if(use_gaussian):
+        f2.create_dataset('datapoint{}/gaussian_mask'.format(datapoint_index),data=gaussian_mask)
 
 
 

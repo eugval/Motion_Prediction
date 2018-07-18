@@ -61,4 +61,11 @@ class DistancePlusIoU(nn.Module):
         iou_loss = self.iou(pred,label)
         dist_loss = self.distance_loss(pred, future_centroid)
 
+        if(dist_loss <= 1.0):
+            order = 1.0
+        else:
+            order = torch.pow(10,torch.ceil(torch.log10(dist_loss))).item()
+
+        dist_loss = torch.div(dist_loss, order)
+
         return torch.add(iou_loss,dist_loss)

@@ -29,7 +29,29 @@ def find_centroid(bbox):
     return int(x),int(y)
 
 
-def add_centroids(data_file, f = None):
+def find_centroid_via_mask(mask):
+    rows, cols = mask.shape
+
+    y_p = np.arange(cols)
+    y_p = y_p.reshape((-1, 1))
+
+    mask_sum = np.sum(mask)
+
+    mean_y = np.dot(mask, y_p)
+    mean_y = np.sum(mean_y)
+    mean_y = mean_y / mask_sum
+
+    x_p = np.arange(rows)
+
+    mean_x = np.dot(x_p, mask)
+    mean_x = np.sum(mean_x)
+    mean_x = mean_x / mask_sum
+
+    return (int(mean_x), int(mean_y))
+
+
+
+def add_centroids(data_file, f = None,  method= 'masks'):
     close = False
     if (f == None):
         close = True
@@ -40,9 +62,12 @@ def add_centroids(data_file, f = None):
     for i in range(start_count, f['frame_number'].value[0]):
         frame = "frame{}".format(i)
 
-
-        bboxes = f[frame]['rois'].value
-        centroids = [find_centroid(bbox) for bbox in bboxes]
+        if(method == 'bboxes'):
+            bboxes = f[frame]['rois'].value
+            centroids = [find_centroid(bbox) for bbox in bboxes]
+        elif(method == 'masks'):
+            masks = f[frame]['masks'].value
+            centroids = [find_centroid_via_mask(masks[:,:,i]) for i  in range(masks.shape[-1])]
 
         centroid_key = "{}/centroids".format(frame)
 
@@ -53,11 +78,11 @@ def add_centroids(data_file, f = None):
     if(close):
         f.close()
 
-def make_gaussian_masks(data_file, use_covariance=False ,verbose = 0):
+def make_gaussian_masks(data_file, use_covariance=False ,verbose = 0, centroid_method = 'masks'):
     f = h5py.File(data_file, "r+")
 
     if('frame1/centroids' not in f):
-        add_centroids(data_file,f)
+        add_centroids(data_file,f=f, method = centroid_method)
 
     start_count = find_start_count(list(f.keys()))
 
@@ -210,7 +235,7 @@ def save_gaussians(image,save_path, gaussians,centroids, boxes, title="",
 
 
 
-def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True, verbose =0):
+def visualise_gaussians(data_file, target_folder, id_idx = 0, captions = True, verbose = 0):
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)
 

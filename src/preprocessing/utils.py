@@ -49,7 +49,13 @@ def verify_ID_uniqueness(file, id_idx =0):
     return True
 
 
-def visualise_image(image, save_path = None):
+def visualise_image(image, save_path = None, centroid_coordinates = None):
+    if(centroid_coordinates is not None):
+        if(len(image.shape) ==2):
+            image[centroid_coordinates[0]-2:centroid_coordinates[0]+2,centroid_coordinates[1]-2:centroid_coordinates[1]+2]=0
+        else:
+            image[centroid_coordinates[0]-2:centroid_coordinates[0]+2,centroid_coordinates[1]-2:centroid_coordinates[1]+2]=0
+
     plt.imshow(image)
     if(save_path):
         plt.savefig(save_path , bbox_inches='tight', pad_inches = 0)

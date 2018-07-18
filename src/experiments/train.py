@@ -30,7 +30,7 @@ from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
 #device = 'cpu'
 print(device)
 
@@ -44,12 +44,13 @@ for data_name in data_names:
 
     ###### PARAMETERS #######
     descriptive_text = '''
-    Distance loss only '''
+     Trying distance plus iou loss
+     '''
 
 
     #inputs, label and model params
     model = UnetShallow
-    model_name = "UnetShallow_MI_{}_6_test".format(data_name)
+    model_name = "UnetShallow_MI_{}_7".format(data_name) # For test change here
     only_one_mask = False
     input_types = ['images', 'masks']
     label_type = 'future_mask'
@@ -57,17 +58,21 @@ for data_name in data_names:
 
 
     #training params
-    loss_used = 'dist'
+    loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
     optimiser_used = 'adam'
     momentum = 0.9
-    num_epochs = 60
-    batch_size = 32
+    num_epochs = 65
+    batch_size = 32    # For test change here
     learning_rate = 0.001
     eval_percent = 0.1
     patience = 4
     use_loss_for_early_stopping = True
     use_smoothed_early_stopping = True
     early_stopper_weight_factor = 0.2
+
+
+    #Data selection params
+    high_movement_bias = False
 
     #data manipulation/augmentation params
     resize_height =  128
@@ -87,6 +92,11 @@ for data_name in data_names:
     eval_batch_size = 128
 
     #Retrieving file paths
+    if(high_movement_bias):
+        idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets_high_movement.pickle".format(data_name,data_name))
+    else:
+        idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
+
     dataset_file = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name,data_name))
     idx_sets_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(data_name,data_name))
     baselines_file = os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.pickle".format(data_name,data_name))
@@ -134,7 +144,8 @@ for data_name in data_names:
                     'baselines_file': baselines_file,
                     'optimiser_used':optimiser_used,
                     'momentum':momentum,
-                    'datetime': str(datetime.datetime.now())
+                    'datetime': str(datetime.datetime.now()),
+                    'high_movement_bias': high_movement_bias
                     }
 
     for k,v in param_holder.items():
@@ -294,7 +305,7 @@ for data_name in data_names:
             loss.backward()
             optimizer.step()
 
-            break
+            #break
 
             backprop_time = (time.time() - start_time) - backprop_time
 

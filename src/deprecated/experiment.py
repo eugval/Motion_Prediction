@@ -23,10 +23,11 @@ def get_placeholders():
 log_period_updates =200
 batch_size = 100
 settings = [(10000000000000, 0.0001), (1000000000, 0.005), (100000000, 0.1), (100000000, 0.001), (100000000, 0.003), (100000000, 0.004), (1000000000, 0.004) ,(1000000000, 0.006) ,(1000000000, 0.007) ]
-print('Training Model 3')
+
 
 
 def main_func():
+    print('Training Model 3')
     # Train Model 1 with the different hyper-parameter settings.
     for (num_epochs, learning_rate) in settings:
 

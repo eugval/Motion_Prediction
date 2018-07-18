@@ -13,11 +13,12 @@ from preprocessing.detection import run_mask_rcnn, generate_save_dir_path , gene
 from preprocessing.tracking import  track, consolidate_indices, visualise_tracks, iou_track
 from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 
-from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians
+from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians, add_centroids
 
 from preprocessing.make_dataset import make_dataset
 from preprocessing.manipulate_dataset import MakeDataSplits
 from preprocessing.resize_data import resize_data
+from preprocessing.get_stats import get_data_stats, get_histogram
 import time
 
 
@@ -29,14 +30,16 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Football1_sm",2)] # Football1and2, Football2_1person , Crossing1, Crossing2
+names = [ ("Football1and2",2) , ('Crossing1',1)] # Football1and2, Football2_1person , Crossing1, Crossing2
 detecting = False
-discarding = True
-tracking = True
+discarding = False
+tracking = False
 resizing = True
-make_gaussians = True
+calculate_centroids = True
+make_gaussians = False
 dataset = True
 make_idx = True
+stats = True
 mask_vis = False
 gauss_vis = False
 
@@ -69,6 +72,8 @@ for name, config in names:
     set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name,name))
     target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
     target_folder_gauss = os.path.join(PROCESSED_PATH, "{}/tracked_images_gauss/".format(name))
+    stats_file = os.path.join(PROCESSED_PATH, "{}/{}_stats.pickle".format(name,name))
+    target_folder = os.path.join(PROCESSED_PATH, "{}/".format(name))
 
     if (detecting):
         print("Detecting...")
@@ -123,6 +128,14 @@ for name, config in names:
             resized_file = tracked_file
     print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
+
+    if(calculate_centroids):
+        print("Calculating centroids...")
+        sys.stdout.flush()
+        add_centroids(resized_file, f = None,  method= 'masks')
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))#
+        sys.stdout.flush()
+
     if(make_gaussians):
         print("Making gaussian masks...")
         sys.stdout.flush()
@@ -140,6 +153,12 @@ for name, config in names:
         data_splitter.make_frame_split('test', 0)
         data_splitter.make_frame_split('val', 0.1,save_path=set_idx_file)
 
+    if(stats):
+        print("Making Stats...")
+        sys.stdout.flush()
+        stats = get_data_stats(dataset_file, stats_file)
+        get_histogram(stats,name,target_folder)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
     if(mask_vis):
         print("Making Visualisation...")
