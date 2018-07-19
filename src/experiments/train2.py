@@ -39,13 +39,13 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Iou plus high movement bias, early stopping at 0.4
+        Spatial Unet first run, depth 4 apart from bottleneck depth 3, dropout 0.5, early stopping at 0.2
          '''
 
 
         #inputs, label and model params
-        model = UnetShallow
-        model_name = "UnetShallow_MI_{}_8".format(data_name) # For test change here
+        model = SpatialUnet
+        model_name = "SpatialUnet_MI_{}_1".format(data_name) # For test change here
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
@@ -63,11 +63,11 @@ def train_func(data_names, device):
         patience = 4
         use_loss_for_early_stopping = True
         use_smoothed_early_stopping = True
-        early_stopper_weight_factor = 0.4
+        early_stopper_weight_factor = 0.2
 
 
         #Data selection params
-        high_movement_bias = True
+        high_movement_bias = False
 
         #data manipulation/augmentation params
         resize_height =  128
@@ -389,11 +389,9 @@ if __name__=='__main__':
     print(device)
 
 
-    data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm' # For test change here
+    data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
+
 
     train_func(data_names, device)
-
-
-
 
     main_func()

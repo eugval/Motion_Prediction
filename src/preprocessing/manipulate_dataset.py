@@ -134,6 +134,7 @@ class MakeDataSplits(object):
                 future_mask = f[datapoint]['future_mask'].value
                 iou_bbox = iou_bbox_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
 
+                # TODO : Add an or with the mask iou
                 if(iou_bbox > high_thresh):
                     indices_to_delete.append(i)
                 elif(iou_bbox <  low_thresh):
