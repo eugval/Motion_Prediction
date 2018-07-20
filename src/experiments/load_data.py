@@ -180,10 +180,10 @@ class ResizeSample(object):
         new_sample = sample
 
         input = cv2.resize(input, (self.w, self.h))
-        label = cv2.resize(label, (self.l_w, self.l_h),interpolation=cv2.INTER_NEAREST)
+        label = cv2.resize(label, (self.l_w, self.l_h))
 
         new_sample['input'] = input
-        new_sample['label'] = label
+        new_sample['label'] = (label > 0.5).astype(np.float)
 
         return new_sample
 

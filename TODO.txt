@@ -13,3 +13,5 @@
 
 
 -Change the way I am doing centroids by using the masks instead on preprocessing
+
+-Check if i need to threshold all labels after resizing

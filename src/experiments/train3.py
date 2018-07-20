@@ -21,7 +21,7 @@ from torch.utils.data import  DataLoader
 import json
 import datetime
 
-from experiments.model import   SimpleUNet, Unet, UnetShallow, SpatialUnet
+from experiments.model import   SimpleUNet, Unet, UnetShallow, SpatialUnet, SpatialNet, ResUnet
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
@@ -39,13 +39,13 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-         Dist + Iou, higher learning rate of 0.01 + 100 epochs
+        testing spatialnet
          '''
 
 
         #inputs, label and model params
-        model = UnetShallow
-        model_name = "UnetShallow_MI_{}_9".format(data_name) # For test change here
+        model = SpatialNet
+        model_name = "SpatialUnet_MI_{}_1_test".format(data_name) # For test change here
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
@@ -54,13 +54,14 @@ def train_func(data_names, device):
         model_inputs = [number_of_inputs-9]
 
 
+
         #training params
         loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
         momentum = 0.9
         num_epochs = 100
-        batch_size = 32    # For test change here
-        learning_rate = 0.01
+        batch_size = 3    # For test change here
+        learning_rate = 0.001
         eval_percent = 0.1
         patience = 4
         use_loss_for_early_stopping = True
@@ -72,8 +73,11 @@ def train_func(data_names, device):
         high_movement_bias = False
 
         #data manipulation/augmentation params
-        resize_height =  128
+        resize_height =  256
         resize_width = 2*resize_height
+
+        label_resize_height = 64
+        label_resize_width = 128
 
         random_crop = True
         crop_order = 15
@@ -175,10 +179,10 @@ def train_func(data_names, device):
         if(random_noise):
             input_transforms.append(RandomNoise())
 
-        input_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+        input_transforms.append(ResizeSample(height= resize_height, width = resize_width, label_height= label_resize_height,label_width = label_resize_width ))
         input_transforms.append(ToTensor())
 
-        eval_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+        eval_transforms.append(ResizeSample(height= resize_height, width = resize_width,  label_height= label_resize_height,label_width = label_resize_width))
         eval_transforms.append(ToTensor())
 
         train_set = DataFromH5py(dataset_file,idx_sets,purpose = 'train', input_type = input_types,
@@ -302,7 +306,7 @@ def train_func(data_names, device):
                 loss.backward()
                 optimizer.step()
 
-                #break
+                #break # For test change here
 
                 backprop_time = (time.time() - start_time) - backprop_time
 
@@ -362,10 +366,8 @@ def train_func(data_names, device):
 
             sys.stdout.flush()
             if(save_model):
-                print('recording saved model for plotting..')
                 tracker.record_saving(epoch)
                 torch.save(model.state_dict(), model_file)
-                sys.stdout.flush()
 
             print('Saving training tracker....')
             pickle.dump(tracker, open(model_history_file, "wb"))
@@ -388,16 +390,14 @@ def train_func(data_names, device):
 
 if __name__=='__main__':
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
-    #device = 'cpu'
+    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
+    device = 'cpu'
     print(device)
 
 
-    data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm' # For test change here
+    data_names = ['Football1_sm']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
+
 
     train_func(data_names, device)
-
-
-
 
     main_func()

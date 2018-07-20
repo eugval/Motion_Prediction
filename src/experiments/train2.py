@@ -39,7 +39,7 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Spatial Unet first run, depth 4 apart from bottleneck depth 3, dropout 0.5, early stopping at 0.2
+        Spatial Unet first run, depth 4 apart from bottleneck depth 3, dropout 0.5, early stopping at 0.4, 100 epochs
          '''
 
 
@@ -51,19 +51,20 @@ def train_func(data_names, device):
         label_type = 'future_mask'
         number_of_inputs = 12
 
+        model_inputs = [number_of_inputs]
 
         #training params
         loss_used = 'iou' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
         momentum = 0.9
-        num_epochs = 65
+        num_epochs = 100
         batch_size = 32    # For test change here
         learning_rate = 0.001
         eval_percent = 0.1
         patience = 4
         use_loss_for_early_stopping = True
         use_smoothed_early_stopping = True
-        early_stopper_weight_factor = 0.2
+        early_stopper_weight_factor = 0.4
 
 
         #Data selection params
@@ -211,7 +212,7 @@ def train_func(data_names, device):
         pickle.dump(param_holder, open(param_holder_file, "wb"))
 
         ###### Define the Model ####
-        model = model(number_of_inputs)
+        model = model(*model_inputs)
         model.to(device)
         print(model)
 
@@ -228,11 +229,11 @@ def train_func(data_names, device):
 
 
         if(optimiser_used == 'rmsprop'):
-            optimizer = optim.RMSprop(model.parameters(), lr = learning_rate)
+            optimizer = optim.RMSprop(filter(lambda p: p.requires_grad, model.parameters()), lr = learning_rate)
         elif(optimiser_used == 'adam'):
-            optimizer = optim.Adam(model.parameters(), lr = learning_rate)
+            optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr = learning_rate)
         elif(optimiser_used == 'sgd'):
-            torch.optim.SGD(model.parameters(), lr = learning_rate, momentum = momentum)
+            torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr = learning_rate, momentum = momentum)
 
 
         #### Instantiate history tracking objects ####
@@ -360,7 +361,7 @@ def train_func(data_names, device):
 
             sys.stdout.flush()
             if(save_model):
-                tracker.record_saving()
+                tracker.record_saving(epoch)
                 torch.save(model.state_dict(), model_file)
 
             print('Saving training tracker....')

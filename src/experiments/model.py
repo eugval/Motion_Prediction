@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import torchvision
+from torchvision import datasets, models, transforms
 
 class DoubleConv(nn.Module):
     def __init__(self,input_channels, output_channels):
@@ -82,19 +84,17 @@ class UpSpatial(nn.Module):
 
 
 
-class SingleConvPool(nn.Module):
+class ConvPool(nn.Module):
     def __init__(self, input_channels,output_channels):
 
-        super(SingleConvPool,self).__init__()
-        self.single_conv_pool = nn.Sequential(
-        nn.Conv2d(input_channels, output_channels,3, padding=1),
+        super(ConvPool,self).__init__()
+        self.conv_pool = nn.Sequential(
+        DoubleConv(input_channels, output_channels),
         nn.MaxPool2d(2, stride=2),
-        nn.BatchNorm2d(output_channels),
-        nn.ReLU(True)
         )
 
     def forward(self, x):
-        return self.single_conv_pool(x)
+        return self.conv_pool(x)
 
 
 class SpatialTransformer(nn.Module):
@@ -104,12 +104,12 @@ class SpatialTransformer(nn.Module):
         # Spatial transformer localization-network
 
         layers = []
-        layers.append(SingleConvPool(channels_in, channels_in //2))
+        layers.append(ConvPool(channels_in, channels_in //2))
         channels = channels_in//2
         H_in = H_in //2
         W_in = W_in //2
         for i in range(1,depth):
-            layers.append(SingleConvPool(channels,channels//2))
+            layers.append(ConvPool(channels,channels//2))
             channels = channels //2
             H_in = H_in //2
             W_in = W_in //2
@@ -152,12 +152,14 @@ class SpatialTransformer(nn.Module):
 
 
 class SpatialUnet(nn.Module):
-    def __init__(self,initial_channels, initial_h = 128, initial_w = 256, depth = 4, dropout = 0.5):
+    def __init__(self,initial_channels, initial_h = 128, initial_w = 256, dropout = 0.5):
         super(SpatialUnet, self).__init__()
+
+        depth = int(4 - (np.log2(128) - np.log2(initial_h)))
         self.initial_conv = DoubleConv(initial_channels,64) #128*256*64
         self.down1 = DownConv(64,128)  #64*128*128
         self.down2 = DownConv(128,256) #32*64*256
-        self.down3 = DownSpatial(256,512,initial_h//8,initial_w//8, 3, dropout) #16*32*512
+        self.down3 = DownSpatial(256,512,initial_h//8,initial_w//8, depth-1, dropout) #16*32*512
 
         self.up2 = UpSpatial(512,256, initial_h//4, initial_w//4, depth= depth, dropout = dropout) #32*64*256
         self.up3 = UpSpatial(256,128, initial_h//2, initial_w//2, depth= depth, dropout = dropout)  #64*128 *128
@@ -352,5 +354,163 @@ class SimpleUNet(nn.Module):
         x7 = self.conv7(x6)
         x8 = self.conv8(x7)
         return x8
+
+
+
+
+class SpatialNet(nn.Module):
+    def __init__(self, masks_nb, dropout = 0.5):
+        super(SpatialNet, self).__init__()
+
+        resnet = models.resnet18(pretrained=True)
+
+        self.resnet_fixed = nn.Sequential(resnet.conv1,resnet.bn1,resnet.relu, resnet.maxpool,  resnet.layer1, resnet.layer2)
+
+        for param in self.resnet_fixed.parameters():
+            param.requires_grad = False
+
+        self.one_by_one_conv =  nn.Conv2d(256, 85, 1)
+
+        self.spatial1 = SpatialTransformer(256,64,128,4,dropout)
+        self.spatial2 = SpatialTransformer(32,64,128,3, dropout)
+
+        self.mask_features = nn.Sequential(ConvPool(masks_nb,16), ConvPool(16,32))
+
+        self.initial_conv = DoubleConv(288,256) #64*128*256
+        self.down1 = DownConv(256,512)  #32*64*512
+        self.down2 = DownConv(512,1024) #16*32*512
+
+        self.up2 = UpConv(1024,512) #32*64*512
+        self.up3 = UpConv(512,256)  #64*128*256
+
+
+        self.final_conv = nn.Conv2d(64, 1, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        rgb1 = x[:,0:3,:,:]
+        rgb2 = x[:,3:6,:,:]
+        rgb3 = x[:,6:9,:,:]
+        masks = x[:,:,9:,:,:]
+
+
+        rgb1 = self.resnet_fixed(rgb1)
+        rgb1 = self.one_by_one_conv(rgb1)
+
+        rgb2 = self.resnet_fixed(rgb2)
+        rgb2 = self.one_by_one_conv(rgb2)
+
+        rgb3 = self.resnet_fixed(rgb3)
+        rgb3 = self.one_by_one_conv(rgb3)
+
+        images = torch.cat((rgb1, rgb2,rgb3), 1)
+
+        masks = self.mask_features(masks)
+
+        x1 = torch.cat((images,masks),1)
+        x1 = self.initial_conv(x1)
+
+
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+
+        x = self.up2(x3,x2)
+        x = self.up3(x,x1)
+        x = self.final_conv(x)
+
+        return x
+
+    def eval_forward(self,x):
+        x = self.forward(x)
+        return self.sigmoid(x)
+
+    def forward_mask(self,x):
+        x = self.eval_forward(x)
+
+        return torch.ge(x,0.5)
+
+
+
+
+
+
+
+
+
+
+
+class ResUnet(nn.Module):
+    def __init__(self, masks_nb, dropout = 0.5):
+        super(ResUnet, self).__init__()
+
+        resnet = models.resnet18(pretrained=True)
+
+        self.resnet_fixed = nn.Sequential(resnet.conv1,resnet.bn1,resnet.relu, resnet.maxpool,  resnet.layer1, resnet.layer2)
+
+        for param in self.resnet_fixed.parameters():
+            param.requires_grad = False
+
+        self.one_by_one_conv =  nn.Conv2d(256, 85, 1)
+
+        self.mask_features = nn.Sequential(ConvPool(masks_nb,16), ConvPool(16,32))
+
+        self.initial_conv = DoubleConv(288,256) #64*128*256
+        self.down1 = DownConv(256,512)  #32*64*512
+        self.down2 = DownSpatial(512,1024,16,32, 4, dropout) #16*32*512
+
+        self.up2 = UpSpatial(1024,512, 32, 64, depth= 4, dropout = dropout) #32*64*512
+        self.up3 = UpSpatial(512,256, 64, 128, depth= 4, dropout = dropout)  #64*128*256
+
+
+        self.final_conv = nn.Conv2d(64, 1, 1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        rgb1 = x[:,0:3,:,:]
+        rgb2 = x[:,3:6,:,:]
+        rgb3 = x[:,6:9,:,:]
+        masks = x[:,:,9:,:,:]
+
+        rgb1 = self.resnet_fixed(rgb1)
+        rgb1 = self.one_by_one_conv(rgb1)
+
+        rgb2 = self.resnet_fixed(rgb2)
+        rgb2 = self.one_by_one_conv(rgb2)
+
+        rgb3 = self.resnet_fixed(rgb3)
+        rgb3 = self.one_by_one_conv(rgb3)
+
+        images = torch.cat((rgb1, rgb2,rgb3), 1)
+        images = self.spatial1(images)
+
+        masks = self.mask_features(masks)
+        masks = self.spatial2(masks)
+
+        x1 = torch.cat((images,masks),1)
+        x1 = self.initial_conv(x1)
+
+
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+
+        x = self.up2(x3,x2)
+        x = self.up3(x,x1)
+        x = self.final_conv(x)
+
+        return x
+
+    def eval_forward(self,x):
+        x = self.forward(x)
+        return self.sigmoid(x)
+
+    def forward_mask(self,x):
+        x = self.eval_forward(x)
+
+        return torch.ge(x,0.5)
+
+
+
+
+
 
 

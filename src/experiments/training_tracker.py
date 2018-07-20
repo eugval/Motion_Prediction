@@ -91,8 +91,8 @@ class TrainingTracker(object):
         else:
             plt.show()
 
-    def record_saving(self):
-        self.saved_epoch += 1
+    def record_saving(self,epoch ):
+        self.saved_epoch = epoch
 
     def record_finished_training(self):
         self.finished = True
