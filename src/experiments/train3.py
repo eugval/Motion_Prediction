@@ -146,7 +146,11 @@ def train_func(data_names, device):
                         'optimiser_used':optimiser_used,
                         'momentum':momentum,
                         'datetime': str(datetime.datetime.now()),
-                        'high_movement_bias': high_movement_bias
+                        'high_movement_bias': high_movement_bias,
+                        'model_inputs': model_inputs,
+                        'label_resize_height':label_resize_height,
+                        'label_resize_width':label_resize_width
+
                         }
 
         for k,v in param_holder.items():
@@ -262,11 +266,11 @@ def train_func(data_names, device):
         for epoch in range(num_epochs):
             if(not early_stopper.continue_training()):
                 print("Early Stopping Triggered, Breaking out of the training loop")
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % (time.time() - start_time)/60)
                 break
 
             print("Training Epoch {}".format(epoch))
-            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+            print("--- %s minutes elapsed ---" % (time.time() - start_time)/60)
             sys.stdout.flush()
 
 
@@ -312,7 +316,7 @@ def train_func(data_names, device):
 
             with torch.no_grad():
                 print("Finished training epoch {}".format(epoch))
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % (time.time() - start_time)/60)
                 print("data_load_time {}".format(data_load_time))
                 print("backprop time {}".format(backprop_time))
                 print("Evaluating...")
@@ -355,7 +359,7 @@ def train_func(data_names, device):
                 print('Val centroid distance: {}'.format(val_dist))
 
                 print("Finished Evaluating Epoch {}".format(epoch))
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % (time.time() - start_time)/60)
                 sys.stdout.flush()
 
             if(not use_loss_for_early_stopping):

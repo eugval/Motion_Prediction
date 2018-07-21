@@ -51,7 +51,7 @@ def train_func(data_names, device):
         label_type = 'future_mask'
         number_of_inputs = 12
 
-        model_inputs = [number_of_inputs-9]
+        model_inputs = [number_of_inputs]
 
 
         #training params
@@ -142,7 +142,8 @@ def train_func(data_names, device):
                         'optimiser_used':optimiser_used,
                         'momentum':momentum,
                         'datetime': str(datetime.datetime.now()),
-                        'high_movement_bias': high_movement_bias
+                        'high_movement_bias': high_movement_bias,
+                        'model_inputs':model_inputs,
                         }
 
         for k,v in param_holder.items():
