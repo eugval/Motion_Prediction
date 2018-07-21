@@ -39,13 +39,14 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Spatial Unet first run, depth 4 apart from bottleneck depth 3, dropout 0.5, early stopping at 0.4, 100 epochs
+        Spatial Unet with double convolution, iou plus distance loss, depth 4 apart from bottleneck depth 3, 
+        dropout 0.5, early stopping at 0.4, 100 epochs
          '''
 
 
         #inputs, label and model params
         model = SpatialUnet
-        model_name = "SpatialUnet_MI_{}_1".format(data_name) # For test change here
+        model_name = "SpatialUnet_MI_{}_2".format(data_name) # For test change here
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
@@ -54,7 +55,7 @@ def train_func(data_names, device):
         model_inputs = [number_of_inputs]
 
         #training params
-        loss_used = 'iou' # 'iou_plus_dist' 'iou' 'dist'
+        loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
         momentum = 0.9
         num_epochs = 100
@@ -358,15 +359,19 @@ def train_func(data_names, device):
             else:
                 save_model = early_stopper.checkpoint(val_loss)
 
-
-            sys.stdout.flush()
+            print('saving model? {}'.format(save_model))
             if(save_model):
+                print('recording saved model for plotting..')
                 tracker.record_saving(epoch)
                 torch.save(model.state_dict(), model_file)
 
             print('Saving training tracker....')
             pickle.dump(tracker, open(model_history_file, "wb"))
 
+            print("Epoch {} Done".format(epoch))
+            sys.stdout.flush()
+
+        print("Record finished training...")
         tracker.record_finished_training()
         pickle.dump(tracker, open(model_history_file, "wb"))
 

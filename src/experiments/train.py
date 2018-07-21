@@ -360,8 +360,7 @@ def train_func(data_names, device):
             else:
                 save_model = early_stopper.checkpoint(val_loss)
 
-
-            sys.stdout.flush()
+            print('saving model? {}'.format(save_model))
             if(save_model):
                 print('recording saved model for plotting..')
                 tracker.record_saving(epoch)
@@ -371,6 +370,10 @@ def train_func(data_names, device):
             print('Saving training tracker....')
             pickle.dump(tracker, open(model_history_file, "wb"))
 
+            print("Epoch {} Done".format(epoch))
+            sys.stdout.flush()
+
+        print("Record finished training...")
         tracker.record_finished_training()
         pickle.dump(tracker, open(model_history_file, "wb"))
 
