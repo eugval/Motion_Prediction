@@ -24,7 +24,8 @@ print(device)
 
 data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
 
-train1.train_func(data_names, device)
 train2.train_func(data_names, device)
+train1.train_func(data_names, device)
+
 
 main_func()
