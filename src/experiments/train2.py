@@ -21,12 +21,12 @@ from torch.utils.data import  DataLoader
 import json
 import datetime
 
-from experiments.model import   SimpleUNet, Unet, UnetShallow, SpatialUnet
+from experiments.model import   SimpleUNet, Unet, UnetShallow, SpatialUnet, SpatialNet, ResUnet, SpatialUnet2
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
 from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
-from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU
+from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU, IntermediateLossWrapperForIoUPlusDist
 from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -39,14 +39,13 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Spatial Unet with double convolution, iou plus distance loss, depth 4 apart from bottleneck depth 3, 
-        dropout 0.5, early stopping at 0.4, 100 epochs
+        testing spatialUnet2, not using loss for early stopping
          '''
 
 
         #inputs, label and model params
-        model = SpatialUnet
-        model_name = "SpatialUnet_MI_{}_2".format(data_name) # For test change here
+        model = SpatialUnet2
+        model_name = "SpatialUnet2_MI_{}_1_test".format(data_name) # For test change here
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
@@ -54,18 +53,22 @@ def train_func(data_names, device):
 
         model_inputs = [number_of_inputs]
 
+
+
         #training params
         loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
+        intermediate_loss = True  #Can only use it with iou+dist
         momentum = 0.9
         num_epochs = 100
-        batch_size = 32    # For test change here
-        learning_rate = 0.001
+        batch_size = 3    # For test change here
+        learning_rate = 0.01
         eval_percent = 0.1
         patience = 4
-        use_loss_for_early_stopping = True
+        use_loss_for_early_stopping = False
         use_smoothed_early_stopping = True
         early_stopper_weight_factor = 0.4
+
 
 
         #Data selection params
@@ -74,6 +77,9 @@ def train_func(data_names, device):
         #data manipulation/augmentation params
         resize_height =  128
         resize_width = 2*resize_height
+
+        label_resize_height = resize_height
+        label_resize_width = resize_width
 
         random_crop = True
         crop_order = 15
@@ -142,7 +148,12 @@ def train_func(data_names, device):
                         'optimiser_used':optimiser_used,
                         'momentum':momentum,
                         'datetime': str(datetime.datetime.now()),
-                        'high_movement_bias': high_movement_bias
+                        'high_movement_bias': high_movement_bias,
+                        'model_inputs': model_inputs,
+                        'label_resize_height':label_resize_height,
+                        'label_resize_width':label_resize_width,
+                        'intermediate_loss':intermediate_loss
+
                         }
 
         for k,v in param_holder.items():
@@ -175,10 +186,10 @@ def train_func(data_names, device):
         if(random_noise):
             input_transforms.append(RandomNoise())
 
-        input_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+        input_transforms.append(ResizeSample(height= resize_height, width = resize_width, label_height= label_resize_height,label_width = label_resize_width ))
         input_transforms.append(ToTensor())
 
-        eval_transforms.append(ResizeSample(height= resize_height, width = resize_width))
+        eval_transforms.append(ResizeSample(height= resize_height, width = resize_width,  label_height= label_resize_height,label_width = label_resize_width))
         eval_transforms.append(ToTensor())
 
         train_set = DataFromH5py(dataset_file,idx_sets,purpose = 'train', input_type = input_types,
@@ -226,7 +237,11 @@ def train_func(data_names, device):
         elif(loss_used == 'dist'):
             criterion = DistanceLoss(device = device)
         elif(loss_used == 'iou_plus_dist'):
-            criterion = DistancePlusIoU(device = device)
+            if(intermediate_loss):
+                criterion = IntermediateLossWrapperForIoUPlusDist(DistancePlusIoU,device= device)
+            else:
+                criterion = DistancePlusIoU(device = device)
+
 
 
         if(optimiser_used == 'rmsprop'):
@@ -258,11 +273,11 @@ def train_func(data_names, device):
         for epoch in range(num_epochs):
             if(not early_stopper.continue_training()):
                 print("Early Stopping Triggered, Breaking out of the training loop")
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % str((time.time() - start_time)/60))
                 break
 
             print("Training Epoch {}".format(epoch))
-            print("--- %s seconds elapsed ---" % (time.time() - start_time))
+            print("--- %s minutes elapsed ---" % str((time.time() - start_time)/60))
             sys.stdout.flush()
 
 
@@ -302,13 +317,13 @@ def train_func(data_names, device):
                 loss.backward()
                 optimizer.step()
 
-                #break
+                break # For test change here
 
                 backprop_time = (time.time() - start_time) - backprop_time
 
             with torch.no_grad():
                 print("Finished training epoch {}".format(epoch))
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % str((time.time() - start_time)/60))
                 print("data_load_time {}".format(data_load_time))
                 print("backprop time {}".format(backprop_time))
                 print("Evaluating...")
@@ -320,9 +335,9 @@ def train_func(data_names, device):
                 model.eval()
 
                 train_loss =  loss_metric.evaluate(model, criterion, loss_used, train_eval_dataloader, device)
-                train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device )
-                train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device )
-                train_dist = distance_via_mean.evaluate(model,train_eval_dataloader,device)
+                train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device , intermediate_loss = intermediate_loss)
+                train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device,  intermediate_loss=intermediate_loss )
+                train_dist = distance_via_mean.evaluate(model,train_eval_dataloader,device, intermediate_loss=intermediate_loss)
 
                 tracker.add(train_loss,'train_loss')
                 tracker.add(train_iou_bbox,'train_iou_bbox')
@@ -331,9 +346,9 @@ def train_func(data_names, device):
 
                 #Evaluate on Valisation Set
                 val_loss = loss_metric.evaluate(model, criterion,loss_used, val_dataloader, device)
-                val_iou_bbox = iou_bbox.evaluate(model,val_dataloader, device )
-                val_iou_mask = iou_mask.evaluate(model,val_dataloader, device )
-                val_dist = distance_via_mean.evaluate(model,val_dataloader,device)
+                val_iou_bbox = iou_bbox.evaluate(model,val_dataloader, device,intermediate_loss=intermediate_loss )
+                val_iou_mask = iou_mask.evaluate(model,val_dataloader, device ,intermediate_loss=intermediate_loss)
+                val_dist = distance_via_mean.evaluate(model,val_dataloader,device,intermediate_loss=intermediate_loss)
 
                 tracker.add(val_loss,'val_loss')
                 tracker.add(val_iou_bbox,'val_iou_bbox')
@@ -351,11 +366,11 @@ def train_func(data_names, device):
                 print('Val centroid distance: {}'.format(val_dist))
 
                 print("Finished Evaluating Epoch {}".format(epoch))
-                print("--- %s seconds elapsed ---" % (time.time() - start_time))
+                print("--- %s minutes elapsed ---" % str((time.time() - start_time)/60))
                 sys.stdout.flush()
 
             if(not use_loss_for_early_stopping):
-                save_model = early_stopper.checkpoint(val_iou_mask)
+                save_model = early_stopper.checkpoint(val_iou_bbox)
             else:
                 save_model = early_stopper.checkpoint(val_loss)
 
@@ -390,12 +405,12 @@ def train_func(data_names, device):
 
 if __name__=='__main__':
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
-    #device = 'cpu'
+    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
+    device = 'cpu'
     print(device)
 
 
-    data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
+    data_names = ['Football1_sm']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
 
 
     train_func(data_names, device)

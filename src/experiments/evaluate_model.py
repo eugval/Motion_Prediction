@@ -18,7 +18,7 @@ from torchvision import transforms
 import cv2
 import numpy as np
 from preprocessing.get_stats import get_histogram
-from experiments.model import Unet, UnetShallow
+from experiments.model import Unet, UnetShallow, SpatialUnet, SpatialNet, SpatialUnet0, ResUnet
 import matplotlib.pyplot as plt
 from deprecated.experiment import main_func
 import json
@@ -49,7 +49,7 @@ class ModelEvaluator(object):
            self.training_tracker = tracker2
 
         self.save_folder = self.params['model_folder']
-        self.model = model(self.params['number_of_inputs'])
+        self.model = model(*self.params['model_inputs'])
         self.model.load_state_dict(torch.load(self.params['model_file'], map_location = self.device_string))
         self.model.to(self.device)
         self.model.eval()
@@ -156,14 +156,18 @@ class ModelEvaluator(object):
         self.performance_arrays['{}_iou_masks'.format(set)] = iou_masks
         self.performance_arrays['{}_distances_via_mean'.format(set)] = distances_via_mean
 
-        self.performance_arrays['{}_iou_bboxes_on_no_movement'.format(set)] = iou_bboxes_on_no_movement
-        self.performance_arrays['{}_iou_masks_on_no_movement'.format(set)] = iou_masks_on_no_movement
 
-        self.performance_arrays['{}_iou_bboxes_on_moderate_movement'.format(set)] = iou_bboxes_on_moderate_movement
-        self.performance_arrays['{}_iou_masks_on_moderate_movement'.format(set)] = iou_masks_on_moderate_movement
+        if(iou_bboxes_on_no_movement):
+            self.performance_arrays['{}_iou_bboxes_on_no_movement'.format(set)] = iou_bboxes_on_no_movement
+            self.performance_arrays['{}_iou_masks_on_no_movement'.format(set)] = iou_masks_on_no_movement
 
-        self.performance_arrays['{}_iou_bboxes_on_high_movement'.format(set)] = iou_bboxes_on_high_movement
-        self.performance_arrays['{}_iou_masks_on_high_movement'.format(set)] = iou_masks_on_high_movement
+        if(iou_bboxes_on_moderate_movement):
+            self.performance_arrays['{}_iou_bboxes_on_moderate_movement'.format(set)] = iou_bboxes_on_moderate_movement
+            self.performance_arrays['{}_iou_masks_on_moderate_movement'.format(set)] = iou_masks_on_moderate_movement
+
+        if(iou_bboxes_on_high_movement):
+            self.performance_arrays['{}_iou_bboxes_on_high_movement'.format(set)] = iou_bboxes_on_high_movement
+            self.performance_arrays['{}_iou_masks_on_high_movement'.format(set)] = iou_masks_on_high_movement
 
 
 
@@ -172,19 +176,20 @@ class ModelEvaluator(object):
         self.performance_statistics['{}_distances_via_mean'.format(set)] = (np.mean(distances_via_mean),
                                                                             np.std(distances_via_mean))
 
-        self.performance_statistics['{}_iou_bboxes_on_no_movement'.format(set)] = (np.mean(iou_bboxes_on_no_movement),np.std(iou_bboxes_on_no_movement))
-        self.performance_statistics['{}_iou_masks_on_no_movement'.format(set)] = (np.mean(iou_masks_on_no_movement), np.std(iou_masks_on_no_movement))
-        self.performance_statistics['{}_distance_via_mean_on_no_movement'.format(set)] = (np.mean(distance_via_mean_on_no_movement),
-                                                                            np.std(distance_via_mean_on_no_movement))
-
-        self.performance_statistics['{}_iou_bboxes_on_moderate_movement'.format(set)] = (np.mean(iou_bboxes_on_moderate_movement),np.std(iou_bboxes_on_moderate_movement))
-        self.performance_statistics['{}_iou_masks_on_moderate_movement'.format(set)] = (np.mean(iou_masks_on_moderate_movement), np.std(iou_masks_on_moderate_movement))
-        self.performance_statistics['{}_distance_via_mean_on_moderate_movement'.format(set)] = (np.mean(distance_via_mean_on_moderate_movement),
+        if(iou_bboxes_on_no_movement):
+            self.performance_statistics['{}_iou_bboxes_on_no_movement'.format(set)] = (np.mean(iou_bboxes_on_no_movement),np.std(iou_bboxes_on_no_movement))
+            self.performance_statistics['{}_iou_masks_on_no_movement'.format(set)] = (np.mean(iou_masks_on_no_movement), np.std(iou_masks_on_no_movement))
+            self.performance_statistics['{}_distance_via_mean_on_no_movement'.format(set)] = (np.mean(distance_via_mean_on_no_movement),
+                                                                                np.std(distance_via_mean_on_no_movement))
+        if(iou_bboxes_on_moderate_movement):
+            self.performance_statistics['{}_iou_bboxes_on_moderate_movement'.format(set)] = (np.mean(iou_bboxes_on_moderate_movement),np.std(iou_bboxes_on_moderate_movement))
+            self.performance_statistics['{}_iou_masks_on_moderate_movement'.format(set)] = (np.mean(iou_masks_on_moderate_movement), np.std(iou_masks_on_moderate_movement))
+            self.performance_statistics['{}_distance_via_mean_on_moderate_movement'.format(set)] = (np.mean(distance_via_mean_on_moderate_movement),
                                                                             np.std(distance_via_mean_on_moderate_movement))
-
-        self.performance_statistics['{}_iou_bboxes_on_high_movement'.format(set)] = (np.mean(iou_bboxes_on_high_movement),np.std(iou_bboxes_on_high_movement))
-        self.performance_statistics['{}_iou_masks_on_high_movement'.format(set)] = (np.mean(iou_masks_on_high_movement), np.std(iou_masks_on_high_movement))
-        self.performance_statistics['{}_distance_via_mean_on_high_movement'.format(set)] = (np.mean(distance_via_mean_on_high_movement),
+        if(iou_bboxes_on_high_movement):
+            self.performance_statistics['{}_iou_bboxes_on_high_movement'.format(set)] = (np.mean(iou_bboxes_on_high_movement),np.std(iou_bboxes_on_high_movement))
+            self.performance_statistics['{}_iou_masks_on_high_movement'.format(set)] = (np.mean(iou_masks_on_high_movement), np.std(iou_masks_on_high_movement))
+            self.performance_statistics['{}_distance_via_mean_on_high_movement'.format(set)] = (np.mean(distance_via_mean_on_high_movement),
                                                                             np.std(distance_via_mean_on_high_movement))
 
 
@@ -358,20 +363,20 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    data_names = [ ('Football1and2', 7)]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    data_names = [('Football1and2',1 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
 
 
-        evaluate_perf = False
-        make_histograms = False
-        make_training_plots = False
+        evaluate_perf = True
+        make_histograms = True
+        make_training_plots = True
         make_qual_plots = True
 
 
-        model = UnetShallow
-        model_name = "UnetShallow_MI_{}_{}".format(data_name, number)
+        model = SpatialUnet0
+        model_name = "SpatialUnet_MI_{}_{}".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
@@ -382,6 +387,9 @@ if __name__=='__main__':
 
         if('label_type' not in params):
             params['label_type'] = 'future_mask'
+
+        if('model_inputs' not in params):
+            params['model_inputs'] = [params['number_of_inputs']]
 
         if('dataset_file' not in params):
            params['dataset_file'] = os.path.join(PROCESSED_PATH, "{}/{}_dataset.hdf5".format(data_name, data_name))
@@ -402,7 +410,7 @@ if __name__=='__main__':
         ###################################
 
 
-        evaluator = ModelEvaluator(model, param_file, cpu_only = True)
+        evaluator = ModelEvaluator(model, param_file, cpu_only = False)
 
         print(evaluator.device)
 

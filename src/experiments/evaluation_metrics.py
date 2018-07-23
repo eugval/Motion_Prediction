@@ -66,7 +66,7 @@ class DistanceViaMean(object):
 
         return dist
 
-    def evaluate(self, model, dataloader,  device):
+    def evaluate(self, model, dataloader,  device, intermediate_loss = False):
 
         num_examples = len(dataloader.dataset)
         tot_dist = 0.0
@@ -79,6 +79,9 @@ class DistanceViaMean(object):
                 outputs = model.eval_forward(inputs)
             else:
                 outputs = model(inputs)
+
+            if(intermediate_loss):
+                outputs = outputs[0]
 
             outputs = torch.squeeze(outputs,1)
             outputs = outputs.detach().cpu().numpy()
@@ -195,7 +198,7 @@ class IoUMetric(object):
             return (intersection.sum(-1).sum(-1)/union.sum(-1).sum(-1).astype('float')).sum()
 
     #TODO: resize to original size before evaluating
-    def evaluate(self, model, dataloader,  device, threshold = 0.5):
+    def evaluate(self, model, dataloader,  device, threshold = 0.5, intermediate_loss = False):
         num_examples = len(dataloader.dataset)
         tot_iou = 0.0
 
@@ -207,6 +210,9 @@ class IoUMetric(object):
                 outputs = model.eval_forward(inputs)
             else:
                 outputs = model(inputs)
+
+            if(intermediate_loss):
+                outputs = outputs[0]
 
             outputs = torch.squeeze(outputs, 1)
             outputs = outputs.detach().cpu().numpy()

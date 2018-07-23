@@ -69,3 +69,24 @@ class DistancePlusIoU(nn.Module):
         dist_loss = torch.div(dist_loss, order)
 
         return torch.add(iou_loss,dist_loss)
+
+
+
+
+
+class IntermediateLossWrapperForIoUPlusDist(nn.Module):
+    def __init__(self,loss, device):
+        super(IntermediateLossWrapperForIoUPlusDist,self).__init__()
+
+        self.loss1 = loss(device)
+        self.loss2 = loss(device)
+
+    def forward(self, pred, label,future_centroid):
+        loss1 = self.loss1(pred[0], label, future_centroid)
+        loss2 = self.loss2(pred[1], label, future_centroid)
+
+        return torch.add(loss1,loss2)
+
+
+
+
