@@ -21,7 +21,7 @@ from torch.utils.data import  DataLoader
 import json
 import datetime
 
-from experiments.model import   SimpleUNet, Unet, UnetShallow, SpatialUnet, SpatialNet, ResUnet, SpatialUnet2
+from experiments.model import    Unet, UnetShallow, SpatialUnet, SpatialUnet2
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
@@ -31,6 +31,8 @@ from deprecated.experiment import main_func
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
+debug = False
+
 
 def train_func(data_names, device):
     for data_name in data_names:
@@ -39,19 +41,25 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        testing spatialUnet2 without mask wrap, not using loss for early stopping
+        SpatialUnet2 with no direct mask warp,
+         using IoU for early stopping,
+        new way to dropout
          '''
 
 
         #inputs, label and model params
         model = SpatialUnet2
-        model_name = "SpatialUnet2_MI_{}_1_test".format(data_name) # For test change here
+        if(debug):
+            model_name = "model_test_1".format(data_name) # For test change here
+        else:
+            model_name = "SpatialUnet2_MI_{}_3".format(data_name) # For test change here
+
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
         number_of_inputs = 12
 
-        model_inputs = [number_of_inputs,128,256,0.5,False]
+        model_inputs = [number_of_inputs,128,256,0.5,False,64]
 
 
 
@@ -60,14 +68,17 @@ def train_func(data_names, device):
         optimiser_used = 'adam'
         intermediate_loss = False  #Can only use it with iou+dist
         momentum = 0.9
-        num_epochs = 100
-        batch_size = 3    # For test change here
-        learning_rate = 0.01
+        num_epochs = 65
+        if(debug):
+            batch_size = 3
+        else:
+            batch_size = 32    # For test change here
+        learning_rate = 0.001
         eval_percent = 0.1
-        patience = 4
+        patience = 5
         use_loss_for_early_stopping = False
         use_smoothed_early_stopping = True
-        early_stopper_weight_factor = 0.4
+        early_stopper_weight_factor = 0.6
 
 
 
@@ -92,7 +103,10 @@ def train_func(data_names, device):
         random_noise = False
 
         #evaluation params
-        eval_batch_size = 128
+        if(debug):
+            eval_batch_size = 3  # For test change here
+        else:
+            eval_batch_size = 64
 
         #Retrieving file paths
         if(high_movement_bias):
@@ -220,13 +234,15 @@ def train_func(data_names, device):
 
 
 
-        ### Save the param holder ####
-        pickle.dump(param_holder, open(param_holder_file, "wb"))
+
 
         ###### Define the Model ####
         model = model(*model_inputs)
         model.to(device)
         print(model)
+        num_of_model_params = sum(p.numel() for p in model.parameters())
+        print(num_of_model_params)
+        param_holder['num_of_model_params']=num_of_model_params
 
 
         ##### Define the Loss/ Optimiser #####
@@ -265,6 +281,10 @@ def train_func(data_names, device):
             early_stopper = SmoothedEarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
         else:
             early_stopper = EarlyStopper(patience, seek_decrease = use_loss_for_early_stopping)
+
+
+        ### Save the param holder ####
+        pickle.dump(param_holder, open(param_holder_file, "wb"))
 
         print("Ready to train")
         sys.stdout.flush()
@@ -317,7 +337,8 @@ def train_func(data_names, device):
                 loss.backward()
                 optimizer.step()
 
-                break # For test change here
+                if(debug):
+                    break # For test change here
 
                 backprop_time = (time.time() - start_time) - backprop_time
 
@@ -405,12 +426,17 @@ def train_func(data_names, device):
 
 if __name__=='__main__':
 
-    #device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
-    device = 'cpu'
+    if(debug):
+        device = 'cpu'
+    else:
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
+
     print(device)
 
-
-    data_names = ['Football1_sm']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
+    if(debug):
+        data_names = ['Football1_sm']
+    else:
+        data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
 
 
     train_func(data_names, device)

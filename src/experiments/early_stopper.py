@@ -75,6 +75,10 @@ class SmoothedEarlyStopper(object):
             return True
 
     def performed_better(self, performance_metric):
+        if(self.verbose):
+            print('moving average performance : {}'.format(self.moving_average))
+            print('current performance : {}'.format(performance_metric))
+
         if(self.seek_decrease):
             return performance_metric <= self.moving_average
         else:

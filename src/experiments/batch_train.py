@@ -15,6 +15,9 @@ from deprecated.experiment import main_func
 
 import experiments.train as train1
 import experiments.train2 as train2
+import experiments.train3 as train3
+import experiments.train4 as train4
+import experiments.train5 as train5
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
@@ -24,8 +27,17 @@ print(device)
 
 data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
 
+train3.train_func(data_names, device)
 train2.train_func(data_names, device)
 train1.train_func(data_names, device)
+train4.train_func(data_names,device)
+train5.train_func(data_names,device)
+
+
+data_names = ['Crossing1']
+
+train3.train_func(data_names,device)
+train4.train_func(data_names,device)
 
 
 main_func()

@@ -64,18 +64,16 @@ def get_data_stats_with_idx_sets(data_file,idx_sets_file, save_path = False):
     iou_bbox = IoUMetric(type = 'bbox')
     iou_mask = IoUMetric(type = 'mask')
 
-    distances = []
-    ious_mask = []
-    ious_bbox = []
 
-
-
-
+    displacement_stats = {}
 
 
     idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
 
     for k, v  in idx_sets.items():
+        distances = []
+        ious_mask = []
+        ious_bbox = []
         for i, idx in enumerate(v):
             datapoint = 'datapoint{}'.format(idx)
 
@@ -88,18 +86,17 @@ def get_data_stats_with_idx_sets(data_file,idx_sets_file, save_path = False):
             ious_bbox.append(iou_bbox.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0)))
             ious_mask.append(iou_mask.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0)))
 
+        displacement_stats[k] = {'dist_mean': np.mean(distances),
+                                 'dis_std': np.std(distances),
+                                 'dist': distances,
+                                 'iou_mask_mean': np.mean(ious_mask),
+                                 'iou_mask_sdt': np.std(ious_mask),
+                                 'iou_mask': ious_mask,
+                                 'iou_bbox_mean': np.mean(ious_bbox),
+                                 'iou_bbox_std': np.std(ious_bbox),
+                                 'iou_bbox': ious_bbox,
+                                 }
 
-
-    displacement_stats = {'dist_mean': np.mean(distances),
-                          'dis_std': np.std(distances),
-                            'dist': distances,
-                          'iou_mask_mean':np.mean(ious_mask),
-                          'iou_mask_sdt':np.std(ious_mask),
-                          'iou_mask':ious_mask,
-                          'iou_bbox_mean':np.mean(ious_bbox),
-                          'iou_bbox_std':np.std(ious_bbox),
-                          'iou_bbox':ious_bbox,
-                          }
 
     if(save_path):
         pickle.dump(displacement_stats, open(save_path, "wb"))
@@ -113,7 +110,6 @@ def get_histogram(stats, data_name, save_folder, suffix = ''):
         if(type(v)==list):
             plt.figure()
             plt.hist(v, bins=20, range=(min(v),max(v)))
-            plt.title('{} {} distribution'.format(data_name,k))
             if('iou' in k):
                 plt.xlim(0, 1)
             save_path = os.path.join(save_folder, '{}_{}_ditribution{}.png'.format(data_name, k,suffix))
@@ -121,16 +117,29 @@ def get_histogram(stats, data_name, save_folder, suffix = ''):
             plt.close()
 
 
+def get_histogram_same_plot(stats, title, save_folder):
+    plt.figure()
+    for k, v in stats.items():
+        if(type(v)==list):
+            plt.hist(v, bins=20, range=(min(v),max(v)), alpha=0.3, label='{}'.format(k))
+
+            if('iou' in k):
+                plt.xlim(0, 1)
+    plt.legend(loc='upper right')
+    save_path = os.path.join(save_folder, '{}.png'.format(title))
+    plt.savefig(save_path)
+    plt.close()
 
 
 
 
 if __name__ =='__main__'  :
-    data_names = ['Football1and2', 'Crossing1' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+    data_names = ['Crossing1', 'Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
     generate = False
-    verify = False
-    genreate_with_idx = True
+    plot = False
+    genreate_with_mvnt = True
+    plot_with_mvnt = True
 
 
     for name in data_names:
@@ -138,45 +147,72 @@ if __name__ =='__main__'  :
         save_path = os.path.join(PROCESSED_PATH, "{}/{}_stats.pickle".format(name,name))
         save_folder = os.path.join(PROCESSED_PATH, "{}/".format(name))
         set_idx_file_high_movement = os.path.join(PROCESSED_PATH, "{}/{}_sets_high_movement.pickle".format(name, name))
+        set_idx_file = os.path.join(PROCESSED_PATH, "{}/{}_sets.pickle".format(name, name))
         save_path_high_movement = os.path.join(PROCESSED_PATH, "{}/{}_stats_high_movement.pickle".format(name,name))
+
 
         if(generate):
             print('doing {}'.format(name))
             sys.stdout.flush()
-            stats = get_data_stats(data_file, save_path)
-            print('dist_mean:{}'.format(stats['dist_mean']))
-            print('dis_std:{}'.format(stats['dis_std']))
-            print('iou_mask_mean:{}'.format(stats['iou_mask_mean']))
-            print('iou_mask_sdt:{}'.format(stats['iou_mask_sdt']))
-            print('iou_bbox_mean:{}'.format(stats['iou_bbox_mean']))
-            print('iou_bbox_std:{}'.format(stats['iou_bbox_std']))
+            stats = get_data_stats_with_idx_sets(data_file,set_idx_file, save_path = save_path)
+
+            for set in ['train','val']:
+                print('{}_dist_mean:{}'.format(set,stats[set]['dist_mean']))
+                print('{}_dis_std:{}'.format(set,stats[set]['dis_std']))
+                print('{}_iou_mask_mean:{}'.format(set,stats[set]['iou_mask_mean']))
+                print('{}_iou_mask_sdt:{}'.format(set,stats[set]['iou_mask_sdt']))
+                print('{}_iou_bbox_mean:{}'.format(set,stats[set]['iou_bbox_mean']))
+                print('{}_iou_bbox_std:{}'.format(set,stats[set]['iou_bbox_std']))
             sys.stdout.flush()
 
-
-
-            get_histogram(stats,name,save_folder)
-
-
-        if(genreate_with_idx):
-            print('doing {} with the higj movement idx set'.format(name))
+        if(genreate_with_mvnt):
+            print('doing {} with the high movement idx set'.format(name))
             sys.stdout.flush()
             stats = get_data_stats_with_idx_sets(data_file,set_idx_file_high_movement, save_path = save_path_high_movement)
-            print('dist_mean:{}'.format(stats['dist_mean']))
-            print('dis_std:{}'.format(stats['dis_std']))
-            print('iou_mask_mean:{}'.format(stats['iou_mask_mean']))
-            print('iou_mask_sdt:{}'.format(stats['iou_mask_sdt']))
-            print('iou_bbox_mean:{}'.format(stats['iou_bbox_mean']))
-            print('iou_bbox_std:{}'.format(stats['iou_bbox_std']))
+
+            for set in ['train','val']:
+                print('{}_dist_mean:{}'.format(set,stats[set]['dist_mean']))
+                print('{}_dis_std:{}'.format(set,stats[set]['dis_std']))
+                print('{}_iou_mask_mean:{}'.format(set,stats[set]['iou_mask_mean']))
+                print('{}_iou_mask_sdt:{}'.format(set,stats[set]['iou_mask_sdt']))
+                print('{}_iou_bbox_mean:{}'.format(set,stats[set]['iou_bbox_mean']))
+                print('{}_iou_bbox_std:{}'.format(set,stats[set]['iou_bbox_std']))
             sys.stdout.flush()
 
-            get_histogram(stats,name,save_folder, suffix ='_high_movement')
 
 
 
-        if(verify):
+        if(plot):
             print("looking at {}".format(name))
             stats = pickle.load(open(save_path, "rb"))
-            print(stats)
+            print(stats.keys())
+
+            iou_bbox = {'train': stats['train']['iou_bbox'],
+                        'val': stats['val']['iou_bbox']}
+
+            iou_mask = {'train': stats['train']['iou_mask'],
+                        'val': stats['val']['iou_mask']}
+
+            dist = {'train': stats['train']['dist'],
+                        'val': stats['val']['dist']}
+
+            get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',save_folder)
+            get_histogram_same_plot(iou_mask,'iou_mask_distributions',save_folder)
+            get_histogram_same_plot(dist,'centroid_distance_distributions',save_folder)
+
+
+
+        if(plot_with_mvnt):
+            print("looking at {}".format(name))
+            stats = pickle.load(open(save_path_high_movement, "rb"))
+            print(stats.keys())
+
+            stats_retuned = {'train_bbox': stats['train']['iou_bbox'],
+                        'val_bbox': stats['val']['iou_bbox'],
+                       'train_mask': stats['train']['iou_mask'],
+                        'val_mask': stats['val']['iou_mask']}
+
+            get_histogram_same_plot(stats_retuned,'iou_bbox_distributions',save_folder)
 
 
 

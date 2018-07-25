@@ -17,11 +17,13 @@ from experiments.evaluation_metrics import IoUMetric, DistanceViaMean
 from torchvision import transforms
 import cv2
 import numpy as np
-from preprocessing.get_stats import get_histogram
-from experiments.model import Unet, UnetShallow, SpatialUnet, SpatialNet, SpatialUnet0, ResUnet
+from preprocessing.get_stats import get_histogram, get_histogram_same_plot
+from experiments.model import Unet, UnetShallow, SpatialUnet,  SpatialUnet0, SpatialUnet2
 import matplotlib.pyplot as plt
 from deprecated.experiment import main_func
 import json
+import colorsys
+import random
 
 
 
@@ -48,8 +50,18 @@ class ModelEvaluator(object):
 
            self.training_tracker = tracker2
 
+        self.intermediate_loss = self.params['intermediate_loss']
         self.save_folder = self.params['model_folder']
-        self.model = model(*self.params['model_inputs'])
+
+        model_inputs = self.params['model_inputs']
+        if(isinstance(model_inputs, dict)):
+            self.model =  model(**model_inputs)
+        elif(isinstance(model_inputs,list)):
+            self.model = model(*model_inputs)
+        else:
+            self.model = model(model_inputs)
+
+
         self.model.load_state_dict(torch.load(self.params['model_file'], map_location = self.device_string))
         self.model.to(self.device)
         self.model.eval()
@@ -179,24 +191,24 @@ class ModelEvaluator(object):
         if(iou_bboxes_on_no_movement):
             self.performance_statistics['{}_iou_bboxes_on_no_movement'.format(set)] = (np.mean(iou_bboxes_on_no_movement),np.std(iou_bboxes_on_no_movement))
             self.performance_statistics['{}_iou_masks_on_no_movement'.format(set)] = (np.mean(iou_masks_on_no_movement), np.std(iou_masks_on_no_movement))
-            self.performance_statistics['{}_distance_via_mean_on_no_movement'.format(set)] = (np.mean(distance_via_mean_on_no_movement),
+            self.performance_statistics['{}_distances_via_mean_on_no_movement'.format(set)] = (np.mean(distance_via_mean_on_no_movement),
                                                                                 np.std(distance_via_mean_on_no_movement))
         if(iou_bboxes_on_moderate_movement):
             self.performance_statistics['{}_iou_bboxes_on_moderate_movement'.format(set)] = (np.mean(iou_bboxes_on_moderate_movement),np.std(iou_bboxes_on_moderate_movement))
             self.performance_statistics['{}_iou_masks_on_moderate_movement'.format(set)] = (np.mean(iou_masks_on_moderate_movement), np.std(iou_masks_on_moderate_movement))
-            self.performance_statistics['{}_distance_via_mean_on_moderate_movement'.format(set)] = (np.mean(distance_via_mean_on_moderate_movement),
+            self.performance_statistics['{}_distances_via_mean_on_moderate_movement'.format(set)] = (np.mean(distance_via_mean_on_moderate_movement),
                                                                             np.std(distance_via_mean_on_moderate_movement))
         if(iou_bboxes_on_high_movement):
             self.performance_statistics['{}_iou_bboxes_on_high_movement'.format(set)] = (np.mean(iou_bboxes_on_high_movement),np.std(iou_bboxes_on_high_movement))
             self.performance_statistics['{}_iou_masks_on_high_movement'.format(set)] = (np.mean(iou_masks_on_high_movement), np.std(iou_masks_on_high_movement))
-            self.performance_statistics['{}_distance_via_mean_on_high_movement'.format(set)] = (np.mean(distance_via_mean_on_high_movement),
+            self.performance_statistics['{}_distances_via_mean_on_high_movement'.format(set)] = (np.mean(distance_via_mean_on_high_movement),
                                                                             np.std(distance_via_mean_on_high_movement))
 
 
 
 
-        self.performance_statistics['{}average_label_input_iou'.format(set)] = average_label_input_iou
-        self.performance_statistics['{}average_prediction_input_iou'.format(set)] = average_prediction_input_iou
+        self.performance_statistics['{}_average_label_input_iou'.format(set)] = average_label_input_iou
+        self.performance_statistics['{}_average_prediction_input_iou'.format(set)] = average_prediction_input_iou
 
 
 
@@ -211,9 +223,28 @@ class ModelEvaluator(object):
         with open(stats_text_file, 'w') as file:
             file.write(json.dumps(self.performance_statistics))
 
-    def plot_performance_histograms(self):
+    def plot_performance_histograms(self, agregate = True, set = 'val', tpe = 'bbox'):
         model_name = self.params['model_name']
-        get_histogram(self.performance_arrays, model_name,self.save_folder)
+        if(not agregate):
+            get_histogram(self.performance_arrays, model_name,self.save_folder)
+        else:
+            arrays = self.performance_arrays
+            agregates = {}
+            for k,v in arrays.items():
+                if('movement' in k and set in k and tpe in k):
+                    if('high' in k):
+                        agregates['high movement'] = v
+                    elif('moderate'in k):
+                        agregates['moderate movement'] = v
+                    elif('no' in k):
+                        agregates['no movment'] = v
+                elif(set in k and tpe in k):
+                    get_histogram({k:v},model_name, self.save_folder)
+
+            if(agregates):
+                get_histogram_same_plot(agregates, '{} distribution on different movement scales on the {} set'.format(tpe,set), self.save_folder)
+
+
 
     def plot_training_progression(self):
         plot_save_file = os.path.join(self.save_folder, "{}_training_plots.png".format(self.params['model_name']))
@@ -311,6 +342,93 @@ class ModelEvaluator(object):
             if(verbose>0): print("Done")
 
 
+
+    def plot_qualitative_vis_2(self, trials, set, verbose = 1):
+        dataset = DataFromH5py(self.dataset_file, self.params['idx_sets'], input_type=self.params['input_types'],
+                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
+                               transform=transforms.Compose([
+                                   ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
+                                   ToTensor()
+                               ]))
+        for trial in range(trials):
+            if (verbose > 0): print("Prediction visualisation {} for {} set of {}".format(trial,set,self.params['model_name'] ))
+            save_path = os.path.join(self.save_folder, "Qualitative_prediction_{}_on_{}_set.png".format(trial,set))
+
+            corresponding_points = []
+            dataset_indices = []
+
+            while len(corresponding_points) < 2:
+                idx = np.random.randint(len(dataset))
+                datapoint_idx = dataset.get_datapoint_index(idx)
+
+                dataset_indices.append(idx)
+                corresponding_points.append(datapoint_idx)
+
+                datapoint_key = 'datapoint{}'.format(datapoint_idx)
+                frame_idx_reference = dataset.f[datapoint_key]['origin_frame'].value[0]
+
+                for i in range(len(dataset)):
+                    datapoint_idx = dataset.get_datapoint_index(i)
+                    if(datapoint_idx in corresponding_points):
+                        continue
+                    datapoint_key = 'datapoint{}'.format(datapoint_idx)
+
+                    if(dataset.f[datapoint_key]['origin_frame'].value[0] == frame_idx_reference):
+                        dataset_indices.append(i)
+                        corresponding_points.append(datapoint_idx)
+
+
+            output_masks = []
+
+            for idx in dataset_indices:
+                sample = dataset[idx]
+                raw_sample = dataset.get_raw(idx)
+
+                output, output_initial_dims, output_after_thresh, label_raw, future_centroid = self.__perform_inference__(sample,raw_sample, dataset.initial_dims)
+
+                output_masks.append(output_after_thresh)
+
+
+            image = dataset.f['datapoint{}'.format(corresponding_points[0])]['images'].value[:,:,:,0]
+
+            colors = self.__random_colors__(len(output_masks))
+
+            for i in range(len(output_masks)):
+                mask = output_masks[i]
+                color = colors[i]
+                image = self.__apply_mask__(image,mask,color)
+
+            plt.figure(figsize=(15, 15))
+            plt.imshow(image)
+
+            plt.tight_layout()
+            plt.savefig(save_path)
+            plt.close()
+            if(verbose>0): print("Done")
+
+
+    def full_video_prediction(self, set = 'val'):
+        save_folder = os.path.join(self.save_folder,'{}_video_prediction'.format(set))
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+
+        
+
+
+    def __random_colors__(self,N, bright=True):
+        brightness = 1.0 if bright else 0.7
+        hsv = [(i / N, 1, brightness) for i in range(N)]
+        colors = list(map(lambda c: colorsys.hsv_to_rgb(*c), hsv))
+        random.shuffle(colors)
+        return colors
+
+    def __apply_mask__(self,image, mask, color):
+
+        alpha = 0.8/ np.max(mask)
+        for c in range(3):
+            image[:, :, c] =  image[:, :, c] * (1 - alpha*mask) + alpha* mask * color[c] * 255
+        return image
+
     def __perform_inference__(self,sample, raw_sample, dims):
         input = sample['input'].float().to(self.device)
 
@@ -340,6 +458,9 @@ class ModelEvaluator(object):
             #
             ##############################################
 
+            if(self.intermediate_loss):
+                output = output[0]
+
             output = output.detach().cpu().numpy()
             output = np.squeeze(output)
             initial_dims = (dims[1], dims[0])
@@ -363,20 +484,21 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    data_names = [('Football1and2',1 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    data_names = [('Football1and2',2 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
         print('dealing with {}'.format(data_name))
         sys.stdout.flush()
 
 
-        evaluate_perf = True
-        make_histograms = True
-        make_training_plots = True
-        make_qual_plots = True
+        evaluate_perf = False
+        make_histograms = False
+        make_training_plots = False
+        make_qual_plots = False
+        make_qual_plots_2 = True
 
 
-        model = SpatialUnet0
-        model_name = "SpatialUnet_MI_{}_{}".format(data_name, number)
+        model = SpatialUnet2
+        model_name = "SpatialUnet2_MI_{}_{}".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
@@ -406,6 +528,9 @@ if __name__=='__main__':
         if ('baselines_file' not in params):
             params['baselines_file'] =  os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.pickle".format(data_name,data_name))
 
+        if('intermediate_loss' not in params):
+            params['intermediate_loss'] = False
+
         pickle.dump(params, open(param_file, "wb"))
         ###################################
 
@@ -426,7 +551,10 @@ if __name__=='__main__':
         if(make_histograms):
             print('saving histograms')
             sys.stdout.flush()
-            evaluator.plot_performance_histograms()
+            evaluator.plot_performance_histograms(tpe ='bbox')
+            evaluator.plot_performance_histograms(tpe ='masks')
+            evaluator.plot_performance_histograms(tpe ='distances')
+
 
         if(make_training_plots):
             print('Making training Plots')
@@ -438,6 +566,12 @@ if __name__=='__main__':
             sys.stdout.flush()
             #evaluator.plot_qualitative_vis(5,'train')
             evaluator.plot_qualitative_vis(10, 'val')
+
+        if(make_qual_plots_2):
+            print('Making Qualitative Plots')
+            sys.stdout.flush()
+            #evaluator.plot_qualitative_vis(5,'train')
+            evaluator.plot_qualitative_vis_2(5, 'val')
 
         print('FINISHED')
 

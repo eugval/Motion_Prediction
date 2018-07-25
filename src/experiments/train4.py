@@ -21,7 +21,7 @@ from torch.utils.data import  DataLoader
 import json
 import datetime
 
-from experiments.model import   Unet, UnetShallow, SpatialUnet,   SpatialUnet2
+from experiments.model import    Unet, UnetShallow, SpatialUnet, SpatialUnet2, SpatialUNetOnFeatures
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
@@ -41,27 +41,24 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        SpatialUnet2 with less parameters,
-        no mask wrap
-         using IoU for early stopping,
-         patience 3, early_stopper factor 0.6
-         new way to dropout
+        SpatialUnetOnFeatures
          '''
 
 
         #inputs, label and model params
-        model = SpatialUnet2
+        model = SpatialUNetOnFeatures
         if(debug):
             model_name = "model_test_1".format(data_name) # For test change here
         else:
-            model_name = "SpatialUnet2_MI_{}_4".format(data_name) # For test change here
+            model_name = "SpatialUNetOnFeatures_MI_{}_1".format(data_name) # For test change here
 
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
         number_of_inputs = 12
 
-        model_inputs = [number_of_inputs,128,256,0.5,False,32]
+        model_inputs = {'input_channels' : number_of_inputs,
+                        'final_upscaling' : 4}
 
 
 
@@ -88,11 +85,11 @@ def train_func(data_names, device):
         high_movement_bias = False
 
         #data manipulation/augmentation params
-        resize_height =  128
+        resize_height =  256
         resize_width = 2*resize_height
 
-        label_resize_height = resize_height
-        label_resize_width = resize_width
+        label_resize_height = 128
+        label_resize_width = 256
 
         random_crop = True
         crop_order = 15
@@ -239,7 +236,12 @@ def train_func(data_names, device):
 
 
         ###### Define the Model ####
-        model = model(*model_inputs)
+        if(isinstance(model_inputs, dict)):
+            model = model(**model_inputs)
+        elif(isinstance(model_inputs,list)):
+            model = model(*model_inputs)
+        else:
+            model = model(model_inputs)
         model.to(device)
         print(model)
         num_of_model_params = sum(p.numel() for p in model.parameters())

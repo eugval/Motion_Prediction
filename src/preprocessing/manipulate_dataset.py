@@ -126,6 +126,7 @@ class MakeDataSplits(object):
             self.idx_sets = idx_sets
 
         iou_bbox_calculator = IoUMetric(type = 'bbox')
+        iou_mask_calculator = IoUMetric(type = 'mask')
         for k,v  in self.idx_sets.items():
             indices_to_delete = []
             for i, idx in enumerate(v):
@@ -133,11 +134,12 @@ class MakeDataSplits(object):
                 input_mask = f[datapoint]['masks'].value[:,:,0]
                 future_mask = f[datapoint]['future_mask'].value
                 iou_bbox = iou_bbox_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
+                iou_mask = iou_mask_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
 
-                # TODO : Add an or with the mask iou
-                if(iou_bbox > high_thresh):
+
+                if(iou_bbox > high_thresh or iou_mask >high_thresh):
                     indices_to_delete.append(i)
-                elif(iou_bbox <  low_thresh):
+                elif(iou_bbox <  low_thresh or iou_mask < low_thresh):
                     indices_to_delete.append(i)
             self.idx_sets[k]=np.delete(self.idx_sets[k], indices_to_delete)
 
@@ -300,7 +302,7 @@ if __name__=='__main__':
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 
     if (make_split):
-        names = [("Football1",2) ,("Crossing1",1), ("Crossing2",1), ("Football2",2),("Football1and2",2), ("Football2_1person",2)]
+        names = [("Crossing1",1),("Football1and2",2)]
 
         for name, config in names:
             print("Doing {} .... ".format(name))
@@ -332,7 +334,7 @@ if __name__=='__main__':
             set_idx_file_high_movement = os.path.join(PROCESSED_PATH, "{}/{}_sets_high_movement.pickle".format(name, name))
 
             data_splitter = MakeDataSplits(dataset_file, resized_file)
-            data_splitter.discard_based_on_iou(dataset_file, high_thresh = 0.8, idx_sets_file = set_idx_file, save_path=set_idx_file_high_movement)
+            data_splitter.discard_based_on_iou(dataset_file, high_thresh = 0.6, idx_sets_file = set_idx_file, save_path=set_idx_file_high_movement)
             print("finished")
             print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
