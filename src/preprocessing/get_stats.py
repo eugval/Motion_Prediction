@@ -137,7 +137,7 @@ if __name__ =='__main__'  :
     data_names = ['Crossing1', 'Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
     generate = False
-    plot = False
+    plot = True
     genreate_with_mvnt = False
     plot_with_mvnt = True
 
@@ -212,7 +212,7 @@ if __name__ =='__main__'  :
                        'train_mask': stats['train']['iou_mask'],
                         'val_mask': stats['val']['iou_mask']}
 
-            get_histogram_same_plot(stats_retuned,'iou_bbox_distributions',save_folder, True)
+            get_histogram_same_plot(stats_retuned,'high-movement trucated distributions',save_folder, True)
 
 
 
