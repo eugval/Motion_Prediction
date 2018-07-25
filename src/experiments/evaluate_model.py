@@ -406,13 +406,13 @@ class ModelEvaluator(object):
             plt.close()
             if(verbose>0): print("Done")
 
-
+    #TODO: FINISH THIS
     def full_video_prediction(self, set = 'val'):
         save_folder = os.path.join(self.save_folder,'{}_video_prediction'.format(set))
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
 
-        
+
 
 
     def __random_colors__(self,N, bright=True):

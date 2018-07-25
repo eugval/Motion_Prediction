@@ -117,13 +117,13 @@ def get_histogram(stats, data_name, save_folder, suffix = ''):
             plt.close()
 
 
-def get_histogram_same_plot(stats, title, save_folder):
+def get_histogram_same_plot(stats, title, save_folder, nomal_x_lim = False):
     plt.figure()
     for k, v in stats.items():
         if(type(v)==list):
             plt.hist(v, bins=20, range=(min(v),max(v)), alpha=0.3, label='{}'.format(k))
 
-            if('iou' in k):
+            if(nomal_x_lim or 'iou' in k or 'mask' in k or 'bbox' in k  ):
                 plt.xlim(0, 1)
     plt.legend(loc='upper right')
     save_path = os.path.join(save_folder, '{}.png'.format(title))
@@ -138,7 +138,7 @@ if __name__ =='__main__'  :
 
     generate = False
     plot = False
-    genreate_with_mvnt = True
+    genreate_with_mvnt = False
     plot_with_mvnt = True
 
 
@@ -196,8 +196,8 @@ if __name__ =='__main__'  :
             dist = {'train': stats['train']['dist'],
                         'val': stats['val']['dist']}
 
-            get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',save_folder)
-            get_histogram_same_plot(iou_mask,'iou_mask_distributions',save_folder)
+            get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',save_folder, True)
+            get_histogram_same_plot(iou_mask,'iou_mask_distributions',save_folder, True)
             get_histogram_same_plot(dist,'centroid_distance_distributions',save_folder)
 
 
@@ -212,7 +212,7 @@ if __name__ =='__main__'  :
                        'train_mask': stats['train']['iou_mask'],
                         'val_mask': stats['val']['iou_mask']}
 
-            get_histogram_same_plot(stats_retuned,'iou_bbox_distributions',save_folder)
+            get_histogram_same_plot(stats_retuned,'iou_bbox_distributions',save_folder, True)
 
 
 
