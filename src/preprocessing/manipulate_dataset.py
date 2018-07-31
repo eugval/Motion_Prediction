@@ -472,7 +472,7 @@ if __name__=='__main__':
 
 
     if(discard):
-        names = [("Football1and2",2) ,("Crossing1",1)]
+        names = [("Football1and2_lt",2)]
 
         for name, config in names:
             print("Doing {} .... ".format(name))
@@ -491,9 +491,9 @@ if __name__=='__main__':
 
 
     if(merge):
-        name1 = "Football1"
-        name2 = "Football2"
-        new_name = "Football1and2"
+        name1 = "Crossing1"
+        name2 = "Crossing2"
+        new_name = "Crossing1and2"
 
         data_file1 = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name1, name1))
         data_file2 = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name2, name2))

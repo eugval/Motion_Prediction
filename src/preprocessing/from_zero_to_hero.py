@@ -16,7 +16,7 @@ from preprocessing.discard import  score_and_pos_discard, class_and_size_discard
 from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussians, add_centroids
 
 from preprocessing.make_dataset import make_dataset
-from preprocessing.manipulate_dataset import MakeDataSplits
+from preprocessing.manipulate_dataset import MakeDataSplits, MakeDataSplitsWithMerge
 from preprocessing.resize_data import resize_data
 from preprocessing.get_stats import get_data_stats, get_histogram, get_data_stats_with_idx_sets, get_histogram_same_plot
 import time
@@ -40,10 +40,15 @@ resizing = False
 calculate_centroids = False
 make_gaussians = False
 dataset = False
-make_idx = True
+mk_idx = False
+mk_idx_merge = False
 mk_stats = True
 mask_vis = False
 gauss_vis = False
+
+future_time = 10
+sparse_sampling = 5
+merged_data = False
 
 
 start_time = time.time()
@@ -148,12 +153,24 @@ for name, config in names:
     if(dataset):
         print("Making the dataset...")
         sys.stdout.flush()
-        make_dataset(resized_file, dataset_file, future_time=10, sparse_sampling = 5)
+        make_dataset(resized_file, dataset_file, future_time= future_time, sparse_sampling = sparse_sampling, merged_data = merged_data)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
+    if(mk_idx):
+        print("Making the dataset train test split...")
+        sys.stdout.flush()
         data_splitter = MakeDataSplits(dataset_file, resized_file)
         data_splitter.make_frame_split('test', 0)
         data_splitter.make_frame_split('val', 0.1,save_path=set_idx_file)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
+    if(mk_idx_merge):
+        print("Making the dataset train test split for merged dataset...")
+        sys.stdout.flush()
+        data_splitter = MakeDataSplitsWithMerge(dataset_file, resized_file)
+        data_splitter.make_frame_split('test', 0)
+        data_splitter.make_frame_split('val', 0.1,save_path=set_idx_file)
+        print("--- %s seconds elapsed ---" % (time.time() - start_time))
+
 
     if(mk_stats):
         print("Making Stats...")

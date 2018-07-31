@@ -138,8 +138,8 @@ if __name__ =='__main__'  :
 
     generate = False
     plot = False
-    genreate_with_mvnt = False
-    plot_with_mvnt = False
+    genreate_with_mvnt = True
+    plot_with_mvnt = True
 
     inspect = False
 
