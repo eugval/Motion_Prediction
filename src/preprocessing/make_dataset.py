@@ -107,7 +107,7 @@ def check_id_consistency(f,id,frame_idx, timestep, number_inputs, future_time):
     return True
 
 
-def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_time=10):
+def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_time=10, sparse_sampling = -1, merged_data = False):
     f = h5py.File(data_file, "r")
     f2= h5py.File(target_file, "w")
     f2.create_dataset("origin_file", data = [np.string_(data_file)] )
@@ -119,11 +119,21 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
     max_frames =  f['frame_number'].value[0]
     start_count = find_start_count(list(f.keys()))
 
-    frame_indices = range(start_count,max_frames)
+    if(sparse_sampling>0):
+        frame_indices = range(start_count,max_frames, sparse_sampling)
+    else:
+        frame_indices = range(start_count,max_frames)
+
+
+    if(merged_data):
+        transition_frame = f['transision_frame'].value[0]
+        f2.create_dataset("transition_frame", data = [transition_frame] )
+        recorded_transision_datapoint = False
 
     datapoint_index = 0
     for i in frame_indices:
         frame = "frame{}".format(i)
+
 
         id_list = []
         for id, id_2 in f[frame]['IDs']:
@@ -143,6 +153,11 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
 
         #Add the datapoint
         if(len(id_list)>0):
+            if(merged_data):
+                if(i>= transition_frame and not recorded_transision_datapoint):
+                    f2.create_dataset("transition_datapoint", data = [i])
+                    recorded_transision_datapoint = True
+
             for id in id_list:
                 add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
                 datapoint_index+=1

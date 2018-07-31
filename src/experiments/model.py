@@ -213,6 +213,7 @@ class LocalisationNetwork(nn.Module):
 
 
 
+
 class SpatialTransformer(nn.Module):
 
     def __init__(self, channels_in,H_in,W_in, depth, dropout = 0.5):
@@ -463,7 +464,7 @@ class SingleConvAvgPool(nn.Module):
         super(SingleConvAvgPool,self).__init__()
         self.single_conv_pool = nn.Sequential(
         nn.Conv2d(input_channels, output_channels,3, padding=1),
-        nn.AvgPool2d(2, stride=2),
+        nn.AvgPool2d(2, stride=2), #TODO: MISTAKE , GOD DAMMIT!
         nn.BatchNorm2d(output_channels),
         nn.ReLU(True)
         )
@@ -494,7 +495,7 @@ class ResnetFeatureExtractor(nn.Module):
 
 
 
-    def forward(self, x):
+    def forward(self, x): #TODO: Check that I'm getting the images correctly
         rgb1 = x[:,0:3,:,:]
         rgb2 = x[:,3:6,:,:]
         rgb3 = x[:,6:9,:,:]

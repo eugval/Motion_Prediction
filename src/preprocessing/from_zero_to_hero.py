@@ -18,8 +18,10 @@ from preprocessing.make_gaussians import make_gaussian_masks, visualise_gaussian
 from preprocessing.make_dataset import make_dataset
 from preprocessing.manipulate_dataset import MakeDataSplits
 from preprocessing.resize_data import resize_data
-from preprocessing.get_stats import get_data_stats, get_histogram
+from preprocessing.get_stats import get_data_stats, get_histogram, get_data_stats_with_idx_sets, get_histogram_same_plot
 import time
+import pickle
+
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -30,16 +32,16 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Football1and2",2) , ('Crossing1',1)] # Football1and2, Football2_1person , Crossing1, Crossing2
+names = [ ("Football1and2_lt",2) ] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt
 detecting = False
 discarding = False
 tracking = False
-resizing = True
-calculate_centroids = True
+resizing = False
+calculate_centroids = False
 make_gaussians = False
-dataset = True
+dataset = False
 make_idx = True
-stats = True
+mk_stats = True
 mask_vis = False
 gauss_vis = False
 
@@ -89,7 +91,7 @@ for name, config in names:
         sys.stdout.flush()
         if(config == 1):
             class_and_size_discard(data_file,class_filtered_file, masks_to_keep=['car'], small_threshold = 50, global_stats=False)
-            score_and_pos_discard(class_filtered_file, tracked_file, [('car', 0.8)])
+            score_and_pos_discard(class_filtered_file, tracked_file, [('car', 0.85)])
         elif(config==2):
             class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
             score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 150})
@@ -146,17 +148,30 @@ for name, config in names:
     if(dataset):
         print("Making the dataset...")
         sys.stdout.flush()
-        make_dataset(resized_file, dataset_file, future_time=5)
+        make_dataset(resized_file, dataset_file, future_time=10, sparse_sampling = 5)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 
         data_splitter = MakeDataSplits(dataset_file, resized_file)
         data_splitter.make_frame_split('test', 0)
         data_splitter.make_frame_split('val', 0.1,save_path=set_idx_file)
 
-    if(stats):
+    if(mk_stats):
         print("Making Stats...")
         sys.stdout.flush()
-        stats = get_data_stats(dataset_file, stats_file)
+        get_data_stats_with_idx_sets(dataset_file,set_idx_file, save_path = stats_file)
+        stats = pickle.load(open(stats_file, "rb"))
+        iou_bbox = {'train': stats['train']['iou_bbox'],
+                        'val': stats['val']['iou_bbox']}
+
+        iou_mask = {'train': stats['train']['iou_mask'],
+                    'val': stats['val']['iou_mask']}
+
+        dist = {'train': stats['train']['dist'],
+                        'val': stats['val']['dist']}
+
+        get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',target_folder, True)
+        get_histogram_same_plot(iou_mask,'iou_mask_distributions',target_folder, True)
+        get_histogram_same_plot(dist,'centroid_distance_distributions',target_folder)
         get_histogram(stats,name,target_folder)
         print("--- %s seconds elapsed ---" % (time.time() - start_time))
 

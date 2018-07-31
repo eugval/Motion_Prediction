@@ -18,12 +18,13 @@ from torchvision import transforms
 import cv2
 import numpy as np
 from preprocessing.get_stats import get_histogram, get_histogram_same_plot
-from experiments.model import Unet, UnetShallow, SpatialUnet,  SpatialUnet0, SpatialUnet2
+from experiments.model import Unet, UnetShallow, SpatialUnet,  SpatialUnet0, SpatialUnet2, SpatialUNetOnFeatures, UNetOnFeatures
 import matplotlib.pyplot as plt
 from deprecated.experiment import main_func
 import json
 import colorsys
 import random
+import h5py
 
 
 
@@ -206,7 +207,7 @@ class ModelEvaluator(object):
 
 
 
-
+        self.performance_statistics['final_saved_epoch'] = self.training_tracker.saved_epoch
         self.performance_statistics['{}_average_label_input_iou'.format(set)] = average_label_input_iou
         self.performance_statistics['{}_average_prediction_input_iou'.format(set)] = average_prediction_input_iou
 
@@ -358,6 +359,8 @@ class ModelEvaluator(object):
             dataset_indices = []
 
             while len(corresponding_points) < 2:
+                corresponding_points = []
+                dataset_indices = []
                 idx = np.random.randint(len(dataset))
                 datapoint_idx = dataset.get_datapoint_index(idx)
 
@@ -407,10 +410,68 @@ class ModelEvaluator(object):
             if(verbose>0): print("Done")
 
     #TODO: FINISH THIS
-    def full_video_prediction(self, set = 'val'):
+    def full_video_prediction(self, set = 'val',verbose =1):
+        if (verbose > 0): print("Video Prediction visualisation for {} set of {}".format(set,self.params['model_name'] ))
+
         save_folder = os.path.join(self.save_folder,'{}_video_prediction'.format(set))
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
+
+        dataset = DataFromH5py(self.dataset_file, self.params['idx_sets'], input_type=self.params['input_types'],
+                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
+                               transform=transforms.Compose([
+                                   ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
+                                   ToTensor()
+                               ]))
+
+        frame_masks = {}
+
+        for i in range(len(dataset)):
+            datapoint_idx = dataset.get_datapoint_index(i)
+            datapoint_key = 'datapoint{}'.format(datapoint_idx)
+
+            origin_frame_idx = dataset.f[datapoint_key]['origin_frame'].value[0]
+            origin_frame = 'frame{}'.format(origin_frame_idx)
+
+            sample = dataset[i]
+            raw_sample = dataset.get_raw(i)
+            output, output_initial_dims, output_after_thresh, label_raw, future_centroid = self.__perform_inference__(sample,raw_sample, dataset.initial_dims)
+
+            if origin_frame in frame_masks:
+                frame_masks[origin_frame].append(output_after_thresh)
+            else :
+                frame_masks[origin_frame] = [output_after_thresh]
+
+            frame_data = self.dataset_file.replace('_dataset','_resized')
+
+            f = h5py.File(frame_data,'r')
+
+            color= self.__one_color__()
+
+            for k,v in frame_masks.items():
+                image = f[k]['image'].value
+
+
+
+                for i in range(len(v)):
+                    mask = v[i]
+                    image = self.__apply_mask__(image,mask,color)
+
+                _, ax = plt.subplots(1)
+                ax.axis('off')
+                ax.imshow(image)
+                ax.margins(0)
+
+                height, width = image.shape[:2]
+                ax.set_ylim(height, 0)
+                ax.set_xlim(0, width)
+
+                save_path = os.path.join(save_folder, "{}.png".format(k))
+                plt.savefig(save_path, bbox_inches='tight',  pad_inches = 0)
+                plt.close()
+        if(verbose>0): print("Done")
+
+
 
 
 
@@ -422,9 +483,16 @@ class ModelEvaluator(object):
         random.shuffle(colors)
         return colors
 
+    def __one_color__(self, bright=True):
+        brightness = 1.0 if bright else 0.7
+        hsv = (1 / 2, 1, brightness)
+        color =  colorsys.hsv_to_rgb(*hsv)
+        return color
+
+
     def __apply_mask__(self,image, mask, color):
 
-        alpha = 0.8/ np.max(mask)
+        alpha = 0.4
         for c in range(3):
             image[:, :, c] =  image[:, :, c] * (1 - alpha*mask) + alpha* mask * color[c] * 255
         return image
@@ -484,21 +552,24 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    data_names = [('Football1and2',2 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    data_names = [('Football1and2', 9 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
-        print('dealing with {}'.format(data_name))
+        print('dealing with {} {}'.format(data_name, number))
         sys.stdout.flush()
 
 
-        evaluate_perf = False
-        make_histograms = False
-        make_training_plots = False
-        make_qual_plots = False
+        evaluate_perf = True
+        make_histograms = True
+        make_training_plots = True
+        make_qual_plots = True
         make_qual_plots_2 = True
+        vid_pred = False
 
 
-        model = SpatialUnet2
-        model_name = "SpatialUnet2_MI_{}_{}".format(data_name, number)
+        model = UnetShallow
+        m = model(12)
+        print(m)
+        model_name = "UnetShallow_MI_{}_{}".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
@@ -573,9 +644,12 @@ if __name__=='__main__':
             #evaluator.plot_qualitative_vis(5,'train')
             evaluator.plot_qualitative_vis_2(5, 'val')
 
+        if(vid_pred):
+            evaluator.full_video_prediction('val')
+
         print('FINISHED')
 
-main_func()
+#main_func()
 
 
 

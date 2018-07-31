@@ -134,12 +134,14 @@ def get_histogram_same_plot(stats, title, save_folder, nomal_x_lim = False):
 
 
 if __name__ =='__main__'  :
-    data_names = ['Crossing1', 'Football1and2' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+    data_names = [ 'Football1and2_lt' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
     generate = False
-    plot = True
+    plot = False
     genreate_with_mvnt = False
-    plot_with_mvnt = True
+    plot_with_mvnt = False
+
+    inspect = False
 
 
     for name in data_names:
@@ -215,6 +217,14 @@ if __name__ =='__main__'  :
             get_histogram_same_plot(stats_retuned,'high-movement trucated distributions',save_folder, True)
 
 
+        if(inspect):
+            print("looking at {}".format(name))
+            stats = pickle.load(open(save_path_high_movement, "rb"))
+            for k,v in stats.items():
+                print(k)
+                for k,v in v.items():
+                    if(not type(v) is list and not isinstance(v, np.ndarray)):
+                        print("{} : {}".format(k,v))
 
 
 

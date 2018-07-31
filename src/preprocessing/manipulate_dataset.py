@@ -177,7 +177,13 @@ class MakeDataSplits(object):
 
         f_dset.close()
 
-        return self.idx_sets
+        return self.idx_setsclass
+
+
+
+
+
+
 
 
 
@@ -205,6 +211,7 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name, verbose =
     total_frames = f1['frame_number'].value[0] + f2['frame_number'].value[0]
     f_new.create_dataset("class_names", data = f1['class_names'])
     f_new.create_dataset("frame_number", data = [total_frames])
+    f_new.create_dataset("transition_frame", data = [f1['frame_number'].value[0]])
 
     count = 0
 
@@ -266,25 +273,168 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name, verbose =
 
 
 
-#TODO: Finish that funciton
-def convert_to_folder_structure(data_file, target_folder):
-    if not os.path.exists(target_folder):
-        os.makedirs(target_folder)
+class MakeDataSplitsWithMerge(object):
+    def __init__(self, dataset_file_path, frames_file_path):
+        self.idx_sets = {'train':np.array([]),
+                         'test': np.array([]),
+                         'val': np.array([]),
+                         }
 
-    f = h5py.File(data_file, "r")
+        self.split_method = 'frame'
 
-    #TODO: Make a non-hardcoded implementation
+        self.dataset_file_path = dataset_file_path
+        self.frames_file_path = frames_file_path
 
-    metadata = {'datapoints': f['datapoints'].value[0],
-                'future_time': f['future_time'].value[0],
-                'number_inputs':f['number_inputs'].value[0],
-                'origin_file':f['origin_file'].value[0],
-                'timestep':f['timestep'].value[0] }
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        self.test_split_datapoint_1 = f_dset['datapoints'].value[0] - 1
+        self.test_split_datapoint_2 = f_dset['datapoints'].value[0] - 1
+        f_dset.close()
 
 
-    for i in range(f['datapoints'].value[0]):
-        pass
+    def save_idx_sets(self, save_path):
+        pickle.dump(self.idx_sets, open(save_path, "wb"))
 
+    def get_idx_sets(self):
+        return self.idx_sets
+
+    def reset(self):
+        self.idx_sets = {'train': np.array([]),
+                         'test': np.array([]),
+                         'val': np.array([]),
+                         }
+
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+        self.test_split_datapoint_1 = f_dset['datapoints'].value[0] - 1
+        self.test_split_datapoint_2 = f_dset['datapoints'].value[0] - 1
+        f_dset.close()
+
+
+    def make_frame_split(self, split_type, frac,
+        save_path = False, discard_input_overlap = False ): #discard input overlap not tested
+
+        if(self.split_method != 'frame_with_merge'):
+            self.split_method = 'frame_with_merge'
+            self.reset()
+
+        #Open the file containing the datapoints and frames
+        f_dset = h5py.File(self.dataset_file_path, 'r')
+
+        timestep = f_dset['timestep'].value[0]
+        number_of_inputs = f_dset['number_inputs'].value[0]
+        dataset_size = f_dset['datapoints'].value[0]
+        transition_frame = f_dset['transition_frame'].value[0]
+        transition_datapoint = f_dset['transision_datapoint'].value[0]
+
+
+
+        if(split_type == 'test'):
+            #reset the test split datapoint, reset the validation set and set the iteration to the whole dataset
+            split_datapoint_1 = dataset_size - int(frac/2 * dataset_size) - 1
+            split_datapoint_2 = transition_datapoint - int(frac/2 * dataset_size)
+            self.test_split_datapoint_1 = split_datapoint_1
+            self.test_split_datapoint_2 = split_datapoint_2
+
+            self.idx_sets['val'] = np.array([])
+
+
+            iteration = range(f_dset['datapoints'].value[0])
+
+        elif(split_type == 'val'):
+            #Use the previous training and validation sets as the iteration
+            iteration = np.concatenate([self.idx_sets['train'], self.idx_sets['val']]).astype('int')
+            #set the splitting datapoint
+            split_datapoint_1 = self.test_split_datapoint_1 - int(frac/2 * dataset_size)
+            split_datapoint_2 = self.test_split_datapoint_2 - int(frac/2 * dataset_size)
+
+
+
+        # Do the end split
+        if(split_datapoint_1 < transition_datapoint):
+            raise ValueError('Split datapoint {} less than transition datapoint {}'.format(split_datapoint_1 , transition_datapoint))
+        else:
+            splitting_frame_1 = f_dset['datapoint{}'.format(split_datapoint_1)]['origin_frame'].value[0]
+            if(splitting_frame_1< transition_frame):
+                raise ValueError('Split frame {} less than transition frame {}'.format(splitting_frame_1 , transition_frame))
+        # Do the end split
+        if(split_datapoint_2 < 0):
+            raise ValueError('Split datapoint {} less than 0'.format(split_datapoint_2 , transition_datapoint))
+        else:
+            splitting_frame_2 = f_dset['datapoint{}'.format(split_datapoint_2)]['origin_frame'].value[0]
+            if(splitting_frame_2< 0):
+                raise ValueError('Split frame {} less than 0'.format(splitting_frame_2 , transition_frame))
+
+
+        if(splitting_frame_2>(splitting_frame_1 - int(timestep * number_of_inputs)) ):
+            raise ValueError('Split frame2 bigger than  split frame 1 - inputs')
+
+
+        split_idx = []
+        train_idx = []
+        for i in iteration:
+            #fetch datapoint
+            datapoint = 'datapoint{}'.format(i)
+            origin_frame = f_dset[datapoint]['origin_frame'].value[0]
+            #If it comes from a frame higher than the split
+            if origin_frame > splitting_frame_1:
+                #put it on the split set
+                split_idx.append(i)
+            elif (discard_input_overlap and origin_frame >= (splitting_frame_1 - int(timestep * number_of_inputs))):
+                #If we want a buffer to avoid overlapping inputs discard some frames
+                continue
+
+            elif(origin_frame > splitting_frame_2 and origin_frame < transition_frame):
+                #put it on the split set
+                split_idx.append(i)
+            elif (discard_input_overlap and origin_frame >= (splitting_frame_2 - int(timestep * number_of_inputs))):
+                #If we want a buffer to avoid overlapping inputs discard some frames
+                continue
+            else:
+                #dd the rest to the training set
+                train_idx.append(i)
+
+        #Updtate the split sets
+        self.idx_sets['train'] = np.array(train_idx)
+        self.idx_sets[split_type] = np.array(split_idx)
+
+        #save and return
+        if(save_path):
+            self.save_idx_sets(save_path)
+
+        f_dset.close()
+
+        return self.idx_sets
+
+
+
+    def discard_based_on_iou(self,dataset_file, high_thresh =1 , low_thresh=0, idx_sets_file = None, save_path=None):
+
+        f = h5py.File(dataset_file,'r')
+        if(idx_sets_file is not None):
+            idx_sets = pickle.load( open(idx_sets_file, "rb" ) )
+            self.idx_sets = idx_sets
+
+        iou_bbox_calculator = IoUMetric(type = 'bbox')
+        iou_mask_calculator = IoUMetric(type = 'mask')
+        for k,v  in self.idx_sets.items():
+            indices_to_delete = []
+            for i, idx in enumerate(v):
+                datapoint = 'datapoint{}'.format(idx)
+                input_mask = f[datapoint]['masks'].value[:,:,0]
+                future_mask = f[datapoint]['future_mask'].value
+                iou_bbox = iou_bbox_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
+                iou_mask = iou_mask_calculator.get_metric(np.expand_dims(input_mask,0),np.expand_dims(future_mask,0))
+
+
+                if(iou_bbox > high_thresh or iou_mask >high_thresh):
+                    indices_to_delete.append(i)
+                elif(iou_bbox <  low_thresh or iou_mask < low_thresh):
+                    indices_to_delete.append(i)
+            self.idx_sets[k]=np.delete(self.idx_sets[k], indices_to_delete)
+
+        if(save_path is not None):
+             self.save_idx_sets(save_path)
+
+        return self.idx_sets
 
 
 
