@@ -229,7 +229,9 @@ def merge_data(dataset1,dataset2,new_dataset_folder, new_dataset_name, verbose =
 
     if verbose > 0: print("Asserting...")
     #Check all the keys are correct
-    assert set(f1.keys()) == set(f_new.keys())
+    aset = set(f_new.keys())
+    aset.remove('transition_frame')
+    assert set(f1.keys()) == aset
     assert set(f1['frame4'].keys()) == set(f_new['frame4'].keys())
 
     #Check that some of the values are correct
@@ -319,18 +321,20 @@ class MakeDataSplitsWithMerge(object):
         #Open the file containing the datapoints and frames
         f_dset = h5py.File(self.dataset_file_path, 'r')
 
+        f_frames = h5py.File(self.frames_file_path,'r')
+
         timestep = f_dset['timestep'].value[0]
         number_of_inputs = f_dset['number_inputs'].value[0]
         dataset_size = f_dset['datapoints'].value[0]
-        transition_frame = f_dset['transition_frame'].value[0]
-        transition_datapoint = f_dset['transision_datapoint'].value[0]
+        transition_frame = f_frames['transition_frame'].value[0]
+        transition_datapoint = f_dset['transition_datapoint'].value[0]
 
 
 
         if(split_type == 'test'):
             #reset the test split datapoint, reset the validation set and set the iteration to the whole dataset
-            split_datapoint_1 = dataset_size - int(frac/2 * dataset_size) - 1
-            split_datapoint_2 = transition_datapoint - int(frac/2 * dataset_size)
+            split_datapoint_1 = dataset_size - int(frac/2 * (dataset_size-transition_datapoint)) - 1
+            split_datapoint_2 = transition_datapoint - int(frac/2 * transition_datapoint) - 1
             self.test_split_datapoint_1 = split_datapoint_1
             self.test_split_datapoint_2 = split_datapoint_2
 
@@ -343,8 +347,8 @@ class MakeDataSplitsWithMerge(object):
             #Use the previous training and validation sets as the iteration
             iteration = np.concatenate([self.idx_sets['train'], self.idx_sets['val']]).astype('int')
             #set the splitting datapoint
-            split_datapoint_1 = self.test_split_datapoint_1 - int(frac/2 * dataset_size)
-            split_datapoint_2 = self.test_split_datapoint_2 - int(frac/2 * dataset_size)
+            split_datapoint_1 = self.test_split_datapoint_1 - int(frac/2 * (dataset_size-transition_datapoint))
+            split_datapoint_2 = self.test_split_datapoint_2 - int(frac/2 * transition_datapoint)
 
 
 
@@ -445,8 +449,8 @@ if __name__=='__main__':
     sys.stdout.flush()
     start_time = time.time()
     make_split = False
-    merge = False
-    discard = True
+    merge = True
+    discard = False
 
     # Path to the processed folders in the data
     PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")

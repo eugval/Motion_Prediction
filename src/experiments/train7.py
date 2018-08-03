@@ -21,7 +21,7 @@ from torch.utils.data import  DataLoader
 import json
 import datetime
 
-from experiments.model import   Unet, UnetShallow, SpatialUnet,   SpatialUnet2
+from experiments.model import   Unet, UnetShallow, SpatialUnet, SpatialUnet2
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
@@ -32,8 +32,6 @@ from deprecated.experiment import main_func
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 debug = False
-
-
 def train_func(data_names, device):
     for data_name in data_names:
         print("Dealing with {}".format(data_name))
@@ -41,34 +39,38 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        SpatialUnet2 with less parameters,
-        no mask wrap
-         using IoU for early stopping,
-         patience 3, early_stopper factor 0.6
-         new way to dropout
+        SpatialUnet2,
+        less parameters,
+        no mask wrap,
+        adjustable transform
          '''
 
 
         #inputs, label and model params
         model = SpatialUnet2
         if(debug):
-            model_name = "model_test_1".format(data_name) # For test change here
+            model_name = 'model_test_1'
         else:
-            model_name = "SpatialUnet2_MI_{}_4".format(data_name) # For test change here
-
+            model_name = "SpatialUnet2_MI_{}_7".format(data_name) # For test change here
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
         number_of_inputs = 12
 
-        model_inputs = [number_of_inputs,128,256,0.5,False,32]
-
-
+        model_inputs = {'initial_channels' : number_of_inputs,
+                        'initial_h': 128,
+                        'initial_w': 256,
+                        'dropout': 0.5,
+                        'wrap_input_mask':False,
+                        'starting_channels': 32,
+                        'extra_relu': False,
+                        'adjust_transform':True
+                        }
 
         #training params
         loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
-        intermediate_loss = False  #Can only use it with iou+dist
+        intermediate_loss = False  # (wrap_input_mask),  Can only use it with iou+dist
         momentum = 0.9
         num_epochs = 65
         if(debug):
@@ -106,9 +108,9 @@ def train_func(data_names, device):
 
         #evaluation params
         if(debug):
-            eval_batch_size = 3  # For test change here
+            eval_batch_size = 2
         else:
-            eval_batch_size = 64
+            eval_batch_size = 64  # For test change here
 
         #Retrieving file paths
         if(high_movement_bias):
@@ -239,7 +241,13 @@ def train_func(data_names, device):
 
 
         ###### Define the Model ####
-        model = model(*model_inputs)
+        if(isinstance(model_inputs, dict)):
+            model = model(**model_inputs)
+        elif(isinstance(model_inputs,list)):
+            model = model(*model_inputs)
+        else:
+            model = model(model_inputs)
+
         model.to(device)
         print(model)
         num_of_model_params = sum(p.numel() for p in model.parameters())
@@ -415,6 +423,7 @@ def train_func(data_names, device):
         print("--- %s hours elapsed ---" % str((time.time() - start_time)/3600))
         sys.stdout.flush()
 
+
     print('FINISHED ALL')
 
 
@@ -437,8 +446,9 @@ if __name__=='__main__':
 
     print(device)
 
+
     if(debug):
-        data_names = ['Football1_sm']
+        data_names=['Football1_sm']
     else:
         data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
 

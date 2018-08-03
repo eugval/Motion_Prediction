@@ -325,16 +325,21 @@ class SpatialConv(nn.Module):
 
 # Uncompatible with binary cross-entropy loss
 class SpatialUnet2(nn.Module):
-    def __init__(self,initial_channels, initial_h = 128, initial_w = 256, dropout = 0.5, wrap_input_mask = True, starting_channels = 64, extra_relu = False):
+    def __init__(self,initial_channels, initial_h = 128, initial_w = 256, dropout = 0.5, wrap_input_mask = True, starting_channels = 64, extra_relu = False, adjust_transform =False):
         super(SpatialUnet2, self).__init__()
 
         self.wrap_input_mask = wrap_input_mask
-
+        self.adjust_transform = adjust_transform
         self.initial_conv = DoubleConv(initial_channels,starting_channels) #128*256*64
         self.down1 = DownConv(starting_channels,starting_channels*2)  #64*128*128
         self.down2 = DownConv(starting_channels*2,starting_channels*4) #32*64*256
         self.down3 = DownConv(starting_channels*4,starting_channels*8) #16*32*512
         self.bottle_neck_spatial = SpatialConv(starting_channels*8,initial_h//8,initial_w//8, 3, dropout) #16*32*1024
+
+        if(adjust_transform):
+            self.multiplier1 = torch.ones((1,2,3),requires_grad = True)
+            self.multiplier2 = torch.ones((1,2,3),requires_grad = True)
+            self.multiplier3 = torch.ones((1,2,3),requires_grad = True)
 
         if(extra_relu):
             self.up2 = UpAffineWithRelu(starting_channels*8,starting_channels*8, starting_channels*4) #32*64*256
@@ -367,10 +372,18 @@ class SpatialUnet2(nn.Module):
         x4 = self.down3(x3) #16*32*512
         x5, theta = self.bottle_neck_spatial(x4) #16*32*1024
 
+        if(self.adjust_transform):
+            theta1 = torch.mul(theta,self.multiplier1)
+            theta2 = torch.mul(theta,self.multiplier2)
+            theta3 = torch.mul(theta,self.multiplier3)
+            x6 = self.up2(x5,x3, theta1)  #32*64*512
+            x6 = self.up3(x6,x2,theta2) # 32*128*256
+            x6 = self.up4(x6,x1, theta3) #64*128*256 (or 128)
+        else:
 
-        x6 = self.up2(x5,x3, theta)  #32*64*512
-        x6 = self.up3(x6,x2,theta) # 32*128*256
-        x6 = self.up4(x6,x1, theta) #64*128*256 (or 128)
+            x6 = self.up2(x5,x3, theta)  #32*64*512
+            x6 = self.up3(x6,x2,theta) # 32*128*256
+            x6 = self.up4(x6,x1, theta) #64*128*256 (or 128)
 
         if(self.wrap_input_mask):
             mask = x[:,9,:,:]
@@ -464,9 +477,23 @@ class SingleConvAvgPool(nn.Module):
         super(SingleConvAvgPool,self).__init__()
         self.single_conv_pool = nn.Sequential(
         nn.Conv2d(input_channels, output_channels,3, padding=1),
-        nn.AvgPool2d(2, stride=2), #TODO: MISTAKE , GOD DAMMIT!
+        nn.AvgPool2d(2, stride=2),
         nn.BatchNorm2d(output_channels),
         nn.ReLU(True)
+        )
+
+    def forward(self, x):
+        return self.single_conv_pool(x)
+
+class SingleConvAvgPool2(nn.Module):
+    def __init__(self, input_channels,output_channels):
+
+        super(SingleConvAvgPool2,self).__init__()
+        self.single_conv_pool = nn.Sequential(
+        nn.Conv2d(input_channels, output_channels,3, padding=1),
+        nn.BatchNorm2d(output_channels),
+        nn.ReLU(True),
+        nn.AvgPool2d(2, stride=2)
         )
 
     def forward(self, x):
@@ -477,7 +504,7 @@ class SingleConvAvgPool(nn.Module):
 
 
 class ResnetFeatureExtractor(nn.Module):
-    def __init__(self, mask_channels):
+    def __init__(self, mask_channels, correction = False):
         super(ResnetFeatureExtractor, self).__init__()
         resnet = models.resnet18(pretrained=True)
 
@@ -486,12 +513,18 @@ class ResnetFeatureExtractor(nn.Module):
         for param in self.resnet_fixed.parameters():
             param.requires_grad = False
 
-
-        self.triple_down_sample = nn.Sequential(
-            SingleConvAvgPool(mask_channels,16),
-            SingleConvAvgPool(16,32),
-            SingleConvAvgPool(32,64)
-        )
+        if(correction):
+            self.triple_down_sample = nn.Sequential(
+                SingleConvAvgPool2(mask_channels,16),
+                SingleConvAvgPool2(16,32),
+                SingleConvAvgPool2(32,64)
+            )
+        else:
+            self.triple_down_sample = nn.Sequential(
+                SingleConvAvgPool(mask_channels,16),
+                SingleConvAvgPool(16,32),
+                SingleConvAvgPool(32,64)
+            )
 
 
 
@@ -580,14 +613,14 @@ class SpatialUnet2SM(nn.Module):
 
 
 class SpatialUNetOnFeatures(nn.Module):
-    def __init__(self, input_channels, final_upscaling = 4):
+    def __init__(self, input_channels, final_upscaling = 4, correction = False):
         super(SpatialUNetOnFeatures, self).__init__()
 
         self.spatial_unet = SpatialUnet2SM(448, final_upscaling= final_upscaling)
         if(input_channels == 12):
-            self.feature_extractor = ResnetFeatureExtractor(3)
+            self.feature_extractor = ResnetFeatureExtractor(3, correction)
         elif(input_channels == 10):
-            self.feature_extractor = ResnetFeatureExtractor(1)
+            self.feature_extractor = ResnetFeatureExtractor(1, correction)
         else:
             raise ValueError('Incorrect number of input channels')
 
@@ -656,14 +689,14 @@ class UnetShallowSM(nn.Module):
 
 
 class UNetOnFeatures(nn.Module):
-    def __init__(self, input_channels, final_upscaling=4):
+    def __init__(self, input_channels, final_upscaling=4, correction = False):
         super(UNetOnFeatures, self).__init__()
 
         self.unet = UnetShallowSM(448, final_upscaling = final_upscaling)
         if(input_channels == 12):
-            self.feature_extractor = ResnetFeatureExtractor(3)
+            self.feature_extractor = ResnetFeatureExtractor(3, correction)
         elif(input_channels == 10):
-            self.feature_extractor = ResnetFeatureExtractor(1)
+            self.feature_extractor = ResnetFeatureExtractor(1, correction)
         else:
             raise ValueError('Incorrect number of input channels')
 

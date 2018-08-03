@@ -120,15 +120,16 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
     start_count = find_start_count(list(f.keys()))
 
     if(sparse_sampling>0):
+        f2.create_dataset("sparse_sampling", data = [sparse_sampling] )
         frame_indices = range(start_count,max_frames, sparse_sampling)
     else:
         frame_indices = range(start_count,max_frames)
 
 
     if(merged_data):
-        transition_frame = f['transision_frame'].value[0]
+        transition_frame = f['transition_frame'].value[0]
         f2.create_dataset("transition_frame", data = [transition_frame] )
-        recorded_transision_datapoint = False
+        recorded_transition_datapoint = False
 
     datapoint_index = 0
     for i in frame_indices:
@@ -154,9 +155,9 @@ def make_dataset(data_file, target_file, timestep=2, number_inputs=3 , future_ti
         #Add the datapoint
         if(len(id_list)>0):
             if(merged_data):
-                if(i>= transition_frame and not recorded_transision_datapoint):
-                    f2.create_dataset("transition_datapoint", data = [i])
-                    recorded_transision_datapoint = True
+                if(i>= transition_frame and not recorded_transition_datapoint):
+                    f2.create_dataset("transition_datapoint", data = [datapoint_index])
+                    recorded_transition_datapoint = True
 
             for id in id_list:
                 add_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)

@@ -32,9 +32,9 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("Crossing1and2_lt",1) ] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt, Football1_sm
+names = [ ("test",2) ] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt, Football1_sm
 detecting = False
-mrg_datasts = False
+mrg_datasts = True
 discarding = True
 tracking = True
 resizing = True
@@ -47,8 +47,8 @@ mk_stats = True
 mask_vis = False
 gauss_vis = False
 
-future_time = 10
-sparse_sampling = 5
+future_time = 5
+sparse_sampling = -1
 merged_data = mk_idx_merge
 
 
@@ -94,9 +94,9 @@ for name, config in names:
 
 
     if(mrg_datasts):
-        mrg_name1 = "Crossing1"
-        mrg_name2 = "Crossing2"
-        mrg_new_name = "Crossing1and2"
+        mrg_name1 = "Football1_sm"
+        mrg_name2 = "Football1_sm"
+        mrg_new_name = "test"
 
         data_file1 = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(mrg_name1, mrg_name1))
         data_file2 = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(mrg_name2, mrg_name2))

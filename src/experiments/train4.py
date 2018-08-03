@@ -41,7 +41,7 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        SpatialUnetOnFeatures
+        SpatialUnetOnFeatures, fixed mask feature bug
          '''
 
 
@@ -50,15 +50,16 @@ def train_func(data_names, device):
         if(debug):
             model_name = "model_test_1".format(data_name) # For test change here
         else:
-            model_name = "SpatialUNetOnFeatures_MI_{}_1".format(data_name) # For test change here
+            model_name = "SpatialUNetOnFeatures_MI_{}_2".format(data_name) # For test change here
 
         only_one_mask = False
         input_types = ['images', 'masks']
         label_type = 'future_mask'
         number_of_inputs = 12
 
-        model_inputs = {'input_channels' : number_of_inputs,
-                        'final_upscaling' : 4}
+        model_inputs = {'input_channels': number_of_inputs,
+                        'final_upscaling': 4,
+                        'correction': True}
 
 
 
@@ -414,6 +415,8 @@ def train_func(data_names, device):
         print("Record finished training...")
         tracker.record_finished_training()
         pickle.dump(tracker, open(model_history_file, "wb"))
+        print("--- %s hours elapsed ---" % str((time.time() - start_time)/3600))
+        sys.stdout.flush()
 
     print('FINISHED ALL')
 
