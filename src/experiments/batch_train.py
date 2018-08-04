@@ -20,6 +20,7 @@ import experiments.train4 as train4
 import experiments.train5 as train5
 import experiments.train6 as train6
 import experiments.train7 as train7
+import experiments.train8 as train8
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For test change here
@@ -27,23 +28,31 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For t
 print(device)
 
 
+data_names = ['Football1and2']
+train8.train_func(data_names,device)
+
+
 data_names = ['Crossing1and2_lt']
+train3.train_func(data_names,device)
+
 data_names = ['Crossing1and2']
+train3.train_func(data_names,device)
 
 data_names = ['Football1and2_lt']
+train1.train_func(data_names,device)
+
+data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
+train7.train_func(data_names,device)
+
 
 data_names = ['Crossing1']
-
-train1.train_func(data_names,device)
-train4.train_func(data_names,device)
 train7.train_func(data_names,device)
+
 
 
 
 
 data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
-
-train7.train_func(data_names,device)
 train6.train_func(data_names,device)
 train5.train_func(data_names,device)
 train4.train_func(data_names,device)
@@ -51,5 +60,7 @@ train4.train_func(data_names,device)
 
 
 
+data_names = ['Crossing1']
+train4.train_func(data_names,device)
 
 main_func()
