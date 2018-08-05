@@ -28,10 +28,6 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # For t
 print(device)
 
 
-data_names = ['Football1and2']
-train8.train_func(data_names,device)
-
-
 
 
 data_names = ['Crossing1and2']
