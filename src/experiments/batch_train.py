@@ -32,11 +32,14 @@ data_names = ['Football1and2']
 train8.train_func(data_names,device)
 
 
-data_names = ['Crossing1and2_lt']
-train3.train_func(data_names,device)
+
 
 data_names = ['Crossing1and2']
 train3.train_func(data_names,device)
+
+data_names = ['Crossing1and2_lt']
+train3.train_func(data_names,device)
+
 
 data_names = ['Football1and2_lt']
 train1.train_func(data_names,device)
