@@ -285,9 +285,12 @@ def train_func(data_names, device):
                                    only_one_mask=only_one_mask, transform=transforms.Compose(eval_transforms))
 
             # Make a dataset with a subset of the training examples for evaluation
-            idx_set_eval = {
-                'train': np.concatenate([np.random.choice(idx_sets0['train'], int(len(train_set) * eval_percent/2), replace=False),np.random.choice(idx_sets1['train'], int(len(train_set) * eval_percent/2), replace=False)])}
-            eval_train_set = DataFromH5py(dataset_file, idx_set_eval, purpose='train', input_type=input_types,
+            idx_set_eval0 = {
+                'train': np.random.choice(idx_sets0['train'], int(len(train_set) * eval_percent/2), replace=False)}
+            idx_set_eval1 = {
+                'train': np.random.choice(idx_sets1['train'], int(len(train_set) * eval_percent / 2), replace=False)}
+
+            eval_train_set = DataFromDoubleH5py(dataset_file0, dataset_file1,idx_set_eval0,idx_set_eval1, purpose='train', input_type=input_types,
                                           label_type=label_type, only_one_mask=only_one_mask,
                                           transform=transforms.Compose(eval_transforms))
 
