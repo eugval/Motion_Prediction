@@ -27,6 +27,11 @@ import random
 import h5py
 
 
+#TODO : Make sure I can cope with  only masks
+# TODO: make sure I can cope with varying dt
+
+# TODO: add testing only.
+
 
 
 class ModelEvaluator(object):
