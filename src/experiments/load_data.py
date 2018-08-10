@@ -297,6 +297,346 @@ class RandomNoise(object):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+############## DOUBLE DATA ###############################
+
+
+
+class DataFromDoubleH5py(Dataset):
+    def __init__(self, file_path0,file_path1, idx_sets0,idx_sets1, purpose, input_type, label_type,  only_one_mask = False, other_sample_entries = ["future_centroid"],transform=None):
+        #Data and data manipulations
+        self.f0 = h5py.File(file_path0, "r")
+        self.f1 = h5py.File(file_path1,"r")
+        self.transform = transform
+
+        self.future_time0 = self.f['future_time'].value[0]
+        self.number_of_inputs0 = self.f['number_inputs'].value[0]
+        self.timestep0 = self.f['timestep'].value[0]
+
+        self.future_time1 = self.f['future_time'].value[0]
+        self.number_of_inputs1 = self.f['number_inputs'].value[0]
+        self.timestep1 = self.f['timestep'].value[0]
+
+        #Train / Test / Val splits
+        self.purpose = purpose #train /test /val
+        self.idx_sets0 = idx_sets0
+        self.idx_sets1 = idx_sets1
+        self.len0 = idx_sets0[purpose].shape[0]
+        self.len1 = idx_sets1[purpose].shape[0]
+
+        #Sample parameters
+        self.label_type = label_type
+        self.input_type = input_type
+        self.other_sample_entries = other_sample_entries
+        self.only_one_mask = only_one_mask
+
+        #Data general parameters
+        self.initial_dims0 = (self.f0['datapoint1']['images'].shape[0], self.f0['datapoint1']['images'].shape[1])
+        self.initial_dims1 = (self.f1['datapoint1']['images'].shape[0], self.f1['datapoint1']['images'].shape[1])
+
+        if(hasattr(transform, 'h' ) and hasattr(transform , 'w')):
+            self.resized_dims =(transform.h, transform.w)
+
+    def __len__(self):
+        return self.len0+self.len1  #potential bug
+
+    def __getitem__(self, idx):
+        dataset_0 = False
+
+        if(idx < self.len0):
+            dataset_0 = True
+
+
+        if(dataset_0):
+            datapoint_idx = self.idx_sets0[self.purpose][idx]
+
+            frame = "datapoint{}".format(datapoint_idx)
+
+            #TODO: maybe use a different technique than reshaping
+            inputs_images =  []
+            inputs_masks = []
+            for in_type in self.input_type:
+
+                inp = self.f0[frame][in_type].value
+
+
+                if(len(inp.shape)==4):
+                    for i in range(inp.shape[3]):
+                        inputs_images.append(inp[:,:,:,i])
+                elif(len(inp.shape)==3):
+                    #Length 3 inputs are masks, so convert them to integers and max them out
+                    if(self.only_one_mask):
+                        inputs_masks.append(inp[:,:,0].astype(int) * 255)
+                    else:
+                        inputs_masks.append(inp.astype(int)*255)
+                elif (len(inp.shape) == 2):
+                    # Length 2 inputs are bboxes, so convert them to masks
+                    for i in range(inp.shape[0]):
+                        bbox_mask = np.zeros(self.initial_dims0)
+                        ymin, xmin, ymax, xmax = inp[i,:]
+                        bbox_mask[ymin:ymax,xmin:xmax]=1
+                        inputs_masks.append(bbox_mask)
+                        if (self.only_one_mask):
+                            break
+
+                else:
+                    raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+            inputs = inputs_images+inputs_masks + [np.zeros(self.initial_dims0)]
+            inputs = np.dstack(inputs)
+
+            if(self.label_type == 'future_bbox'):
+                label = np.zeros(self.initial_dims0)
+
+                ymin, xmin, ymax, xmax = self.f0[frame][self.label_type].value
+
+
+                label[ymin:ymax,xmin:xmax]=1
+            else:
+                label = self.f0[frame][self.label_type].value
+
+
+            sample = {'input': inputs.astype(np.float), 'label': label.astype(np.float)}
+
+            for key in self.other_sample_entries:
+
+                sample[key] = self.f0[frame][key].value
+
+
+
+            if self.transform:
+                sample = self.transform(sample)
+
+            return sample
+
+        else:
+            datapoint_idx = self.idx_sets1[self.purpose][idx - self.len0]
+
+            frame = "datapoint{}".format(datapoint_idx)
+
+            # TODO: maybe use a different technique than reshaping
+            inputs_images = []
+            inputs_masks = []
+            for in_type in self.input_type:
+
+                inp = self.f1[frame][in_type].value
+
+                if (len(inp.shape) == 4):
+                    for i in range(inp.shape[3]):
+                        inputs_images.append(inp[:, :, :, i])
+                elif (len(inp.shape) == 3):
+                    # Length 3 inputs are masks, so convert them to integers and max them out
+                    if (self.only_one_mask):
+                        inputs_masks.append(inp[:, :, 0].astype(int) * 255)
+                    else:
+                        inputs_masks.append(inp.astype(int) * 255)
+                elif (len(inp.shape) == 2):
+                    # Length 2 inputs are bboxes, so convert them to masks
+                    for i in range(inp.shape[0]):
+                        bbox_mask = np.zeros(self.initial_dims1)
+                        ymin, xmin, ymax, xmax = inp[i, :]
+                        bbox_mask[ymin:ymax, xmin:xmax] = 1
+                        inputs_masks.append(bbox_mask)
+                        if (self.only_one_mask):
+                            break
+
+                else:
+                    raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+            inputs = inputs_images + inputs_masks +  [np.ones(self.initial_dims1)*255]
+            inputs = np.dstack(inputs)
+
+            if (self.label_type == 'future_bbox'):
+                label = np.zeros(self.initial_dims1)
+
+                ymin, xmin, ymax, xmax = self.f1[frame][self.label_type].value
+
+                label[ymin:ymax, xmin:xmax] = 1
+            else:
+                label = self.f1[frame][self.label_type].value
+
+            sample = {'input': inputs.astype(np.float), 'label': label.astype(np.float)}
+
+            for key in self.other_sample_entries:
+                sample[key] = self.f1[frame][key].value
+
+            if self.transform:
+                sample = self.transform(sample)
+
+            return sample
+
+
+
+
+    def get_raw(self, idx):
+        dataset_0 = False
+
+        if (idx < self.len0):
+            dataset_0 = True
+
+        if (dataset_0):
+            datapoint_idx = self.idx_sets0[self.purpose][idx]
+
+
+
+            frame = "datapoint{}".format(datapoint_idx)
+
+            inputs_images =  []
+            inputs_masks = []
+            for in_type in self.input_type:
+
+                inp = self.f0[frame][in_type].value
+
+                if(len(inp.shape)==4):
+                    for i in range(inp.shape[3]):
+                        inputs_images.append(inp[:,:,:,i])
+                elif(len(inp.shape)==3):
+                    #Length 3 inputs are masks, so convert them to integers and max them out
+                    if(self.only_one_mask):
+                        inputs_masks.append(inp[:,:,0].astype(int) * 255)
+                    else:
+                        for i in range(inp.shape[2]):
+                            inputs_masks.append(inp[:,:,i].astype(int)*255)
+                elif (len(inp.shape) == 2):
+                    # Length 2 inputs are bboxes, so convert them to masks
+                    for i in range(inp.shape[0]):
+                        bbox_mask = np.zeros(self.initial_dims0)
+                        ymin, xmin, ymax, xmax = inp[i,:]
+                        bbox_mask[ymin:ymax,xmin:xmax]=1
+                        inputs_masks.append(bbox_mask)
+                        if (self.only_one_mask):
+                            break
+
+                else:
+                    raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+
+            inputs = inputs_images+inputs_masks+ [np.zeros(self.initial_dims0)]
+
+            if(self.label_type == 'future_bbox'):
+                label = np.zeros(self.initial_dims0)
+                ymin, xmin, ymax, xmax = self.f0[frame][self.label_type].value
+
+
+                label[ymin:ymax,xmin:xmax]=1
+            else:
+                label = self.f0[frame][self.label_type].value
+
+
+
+            sample = {'input': inputs, 'label': label, 'input_images': inputs_images, 'input_masks': inputs_masks}
+
+            for key in self.other_sample_entries:
+                sample[key] = self.f0[frame][key].value
+
+
+            return sample
+
+        else:
+            datapoint_idx = self.idx_sets1[self.purpose][idx - self.len0]
+
+            frame = "datapoint{}".format(datapoint_idx)
+
+            inputs_images = []
+            inputs_masks = []
+            for in_type in self.input_type:
+
+                inp = self.f1[frame][in_type].value
+
+                if (len(inp.shape) == 4):
+                    for i in range(inp.shape[3]):
+                        inputs_images.append(inp[:, :, :, i])
+                elif (len(inp.shape) == 3):
+                    # Length 3 inputs are masks, so convert them to integers and max them out
+                    if (self.only_one_mask):
+                        inputs_masks.append(inp[:, :, 0].astype(int) * 255)
+                    else:
+                        for i in range(inp.shape[2]):
+                            inputs_masks.append(inp[:, :, i].astype(int) * 255)
+                elif (len(inp.shape) == 2):
+                    # Length 2 inputs are bboxes, so convert them to masks
+                    for i in range(inp.shape[0]):
+                        bbox_mask = np.zeros(self.initial_dims1)
+                        ymin, xmin, ymax, xmax = inp[i, :]
+                        bbox_mask[ymin:ymax, xmin:xmax] = 1
+                        inputs_masks.append(bbox_mask)
+                        if (self.only_one_mask):
+                            break
+
+                else:
+                    raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+            inputs = inputs_images + inputs_masks + [np.ones(self.initial_dims1)*255]
+
+            if (self.label_type == 'future_bbox'):
+                label = np.zeros(self.initial_dims1)
+                ymin, xmin, ymax, xmax = self.f1[frame][self.label_type].value
+
+                label[ymin:ymax, xmin:xmax] = 1
+            else:
+                label = self.f1[frame][self.label_type].value
+
+            sample = {'input': inputs, 'label': label, 'input_images': inputs_images, 'input_masks': inputs_masks}
+
+            for key in self.other_sample_entries:
+                sample[key] = self.f1[frame][key].value
+
+            return sample
+
+
+
+    def get_datapoint_index(self,idx):
+        dataset_0 = False
+
+        if (idx < self.len0):
+            dataset_0 = True
+
+        if (dataset_0):
+            datapoint_idx = self.idx_sets0[self.purpose][idx]
+        else:
+            datapoint_idx = self.idx_sets1[self.purpose][idx - self.len0]
+
+
+        return datapoint_idx, dataset_0
+
+
+
+
+
+
+
+#################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if __name__=='__main__':
     import pickle
     import os
