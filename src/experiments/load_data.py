@@ -319,13 +319,13 @@ class DataFromDoubleH5py(Dataset):
         self.f1 = h5py.File(file_path1,"r")
         self.transform = transform
 
-        self.future_time0 = self.f['future_time'].value[0]
-        self.number_of_inputs0 = self.f['number_inputs'].value[0]
-        self.timestep0 = self.f['timestep'].value[0]
+        self.future_time0 = self.f0['future_time'].value[0]
+        self.number_of_inputs0 = self.f0['number_inputs'].value[0]
+        self.timestep0 = self.f0['timestep'].value[0]
 
-        self.future_time1 = self.f['future_time'].value[0]
-        self.number_of_inputs1 = self.f['number_inputs'].value[0]
-        self.timestep1 = self.f['timestep'].value[0]
+        self.future_time1 = self.f1['future_time'].value[0]
+        self.number_of_inputs1 = self.f1['number_inputs'].value[0]
+        self.timestep1 = self.f1['timestep'].value[0]
 
         #Train / Test / Val splits
         self.purpose = purpose #train /test /val
