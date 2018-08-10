@@ -6,8 +6,8 @@ sys.path.append(os.path.join(ROOT_DIR,"Mask_RCNN"))
 
 import h5py
 import numpy as np
-from Mask_RCNN.mrcnn import visualize
-from preprocessing.utils import make_colormap,find_start_count
+
+from preprocessing.utils import make_colormap,find_start_count, save_instances
 from preprocessing.discard import  class_and_size_discard
 from sort.sort import Sort, KalmanBoxTracker
 
@@ -313,7 +313,7 @@ def visualise_tracks(data_file, target_folder, id_idx = 0):
         colors = [colormap[int(j)] for j in IDs]
 
         save_path = os.path.join(target_folder,"{}.jpg".format(frame))
-        visualize.save_instances(image, save_path, r['rois'], r['masks'], r['class_ids'],
+        save_instances(image, save_path, r['rois'], r['masks'], r['class_ids'],
                                   class_names, IDs, colors=colors)
 
 

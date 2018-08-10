@@ -1,6 +1,9 @@
 #https://www.youtube.com/watch?v=YcTCIMKeiNQ
 import os
 import sys
+
+#sys.path.append('/home/msc_eugene/cs/student/msc/ml/2017/pvalassa/.local/lib/python3.6/site-packages')
+
 ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
@@ -9,6 +12,10 @@ from shutil import copyfile
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
+
+
+print(ROOT_DIR)
+print(sys.path)
 
 import torch
 import pickle
@@ -20,6 +27,7 @@ from torchvision import transforms
 from torch.utils.data import  DataLoader
 import json
 import datetime
+import h5py
 
 from experiments.model import    Unet, UnetShallow, SpatialUnet, SpatialUnet2, SpatialUNetOnFeatures
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
@@ -29,7 +37,7 @@ from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
 from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU, IntermediateLossWrapperForIoUPlusDist
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 debug = False
 

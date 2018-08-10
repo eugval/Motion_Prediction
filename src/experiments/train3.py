@@ -41,6 +41,7 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
+        only masks
         SpatialUnet2 with no direct mask warp,
          using IoU for early stopping,
         new way to dropout
@@ -52,12 +53,12 @@ def train_func(data_names, device):
         if(debug):
             model_name = "model_test_1".format(data_name) # For test change here
         else:
-            model_name = "SpatialUnet2_MI_{}_3".format(data_name) # For test change here
+            model_name = "SpatialUnet2_M_{}_3_f".format(data_name) # For test change here
 
         only_one_mask = False
-        input_types = ['images', 'masks']
+        input_types = ['masks']
         label_type = 'future_mask'
-        number_of_inputs = 12
+        number_of_inputs = 3
 
         model_inputs = [number_of_inputs,128,256,0.5,False,64]
 

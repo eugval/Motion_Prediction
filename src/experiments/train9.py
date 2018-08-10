@@ -1,6 +1,9 @@
 #https://www.youtube.com/watch?v=YcTCIMKeiNQ
 import os
 import sys
+
+#sys.path.append('/home/msc_eugene/cs/student/msc/ml/2017/pvalassa/.local/lib/python3.6/site-packages')
+
 ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 MODEL_PATH = os.path.join(ROOT_DIR,"../models/")
@@ -9,6 +12,10 @@ from shutil import copyfile
 sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
+
+
+print(ROOT_DIR)
+print(sys.path)
 
 import torch
 import pickle
@@ -20,8 +27,9 @@ from torchvision import transforms
 from torch.utils.data import  DataLoader
 import json
 import datetime
+import h5py
 
-from experiments.model import   Unet, UnetShallow, SpatialUnet,   SpatialUnet2
+from experiments.model import    Unet, UnetShallow, SpatialUnet, SpatialUnet2, SpatialUNetOnFeatures
 from experiments.evaluation_metrics import DistanceViaMean, DistanceViaMode, LossMetric , IoUMetric
 from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
@@ -29,7 +37,7 @@ from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
 from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU, IntermediateLossWrapperForIoUPlusDist
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 debug = False
 
@@ -41,33 +49,28 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Only masks
-        SpatialUnet2 with less parameters,
-        no mask wrap
-         using IoU for early stopping,
-         patience 3, early_stopper factor 0.6
-         new way to dropout
+        Second run of Unet shallow with adam + iouanddis (same as 7)
          '''
 
 
         #inputs, label and model params
-        model = SpatialUnet2
+        model = UnetShallow
         if(debug):
             model_name = "model_test_1".format(data_name) # For test change here
         else:
-            model_name = "SpatialUnet2_M_{}_4_f".format(data_name) # For test change here
+            model_name = "UnetShallow_MI_{}_11_f".format(data_name) # For test change here
 
         only_one_mask = False
-        input_types = [ 'masks']
+        input_types = ['images', 'masks']
         label_type = 'future_mask'
-        number_of_inputs = 3
+        number_of_inputs = 12
 
-        model_inputs = [number_of_inputs,128,256,0.5,False,32]
+        model_inputs = [number_of_inputs]
 
 
 
         #training params
-        loss_used = 'iou_plus_dist' # 'iou_plus_dist' 'iou' 'dist'
+        loss_used = 'iou' # 'iou_plus_dist' 'iou' 'dist'
         optimiser_used = 'adam'
         intermediate_loss = False  #Can only use it with iou+dist
         momentum = 0.9
@@ -92,8 +95,8 @@ def train_func(data_names, device):
         resize_height =  128
         resize_width = 2*resize_height
 
-        label_resize_height = resize_height
-        label_resize_width = resize_width
+        label_resize_height = 128
+        label_resize_width = 256
 
         random_crop = True
         crop_order = 15
@@ -240,7 +243,12 @@ def train_func(data_names, device):
 
 
         ###### Define the Model ####
-        model = model(*model_inputs)
+        if(isinstance(model_inputs, dict)):
+            model = model(**model_inputs)
+        elif(isinstance(model_inputs,list)):
+            model = model(*model_inputs)
+        else:
+            model = model(model_inputs)
         model.to(device)
         print(model)
         num_of_model_params = sum(p.numel() for p in model.parameters())
