@@ -567,8 +567,8 @@ if __name__=='__main__':
 
 
         model = UnetShallow
-        m = model(12)
-        print(m)
+        #m = model(12)
+        #print(m)
         model_name = "UnetShallow_MI_{}_{}".format(data_name, number)
 
 
@@ -601,6 +601,9 @@ if __name__=='__main__':
 
         if('intermediate_loss' not in params):
             params['intermediate_loss'] = False
+
+        if('many_times' not in params):
+            params['many_times'] = False
 
         pickle.dump(params, open(param_file, "wb"))
         ###################################

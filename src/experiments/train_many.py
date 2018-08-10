@@ -528,7 +528,7 @@ if __name__=='__main__':
     if(debug):
         data_names = ['Football1_sm']
     else:
-        data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
+        data_names = ['Football1and2', 'Crossing1']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'    # For test change here
 
 
     train_func(data_names, device)
