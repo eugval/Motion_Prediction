@@ -294,7 +294,8 @@ def train_func(data_names, device):
                                           label_type=label_type, only_one_mask=only_one_mask,
                                           transform=transforms.Compose(eval_transforms))
 
-            param_holder['idx_set_eval'] = idx_set_eval
+            param_holder['idx_set_eval0'] = idx_set_eval0
+            param_holder['idx_set_eval1'] = idx_set_eval1
 
 
         else:
