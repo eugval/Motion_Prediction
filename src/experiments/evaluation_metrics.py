@@ -66,7 +66,7 @@ class DistanceViaMean(object):
 
         return dist
 
-    def evaluate(self, model, dataloader,  device, intermediate_loss = False):
+    def evaluate(self, model, dataloader,  device, intermediate_loss = False, many_times= False):
 
         num_examples = len(dataloader.dataset)
         tot_dist = 0.0
@@ -88,8 +88,8 @@ class DistanceViaMean(object):
 
             for i in range(outputs.shape[0]):
                 output = outputs[i,:,:]
-                intial_h = dataloader.dataset.initial_dims[0]
-                initial_w = dataloader.dataset.initial_dims[1]
+                intial_h = dataloader.dataset.initial_dims0[0]
+                initial_w = dataloader.dataset.initial_dims0[1]
                 output = cv2.resize(output, (initial_w, intial_h))
                 tot_dist += self.get_metric(output,centroids[i])
 

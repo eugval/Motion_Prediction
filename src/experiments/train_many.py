@@ -451,7 +451,7 @@ def train_func(data_names, device):
                 train_loss =  loss_metric.evaluate(model, criterion, loss_used, train_eval_dataloader, device)
                 train_iou_bbox = iou_bbox.evaluate(model,train_eval_dataloader, device , intermediate_loss = intermediate_loss)
                 train_iou_mask = iou_mask.evaluate(model,train_eval_dataloader, device,  intermediate_loss=intermediate_loss )
-                train_dist = distance_via_mean.evaluate(model,train_eval_dataloader,device, intermediate_loss=intermediate_loss)
+                train_dist = distance_via_mean.evaluate(model,train_eval_dataloader,device, intermediate_loss=intermediate_loss, many_times= many_times)
 
                 tracker.add(train_loss,'train_loss')
                 tracker.add(train_iou_bbox,'train_iou_bbox')
@@ -462,7 +462,7 @@ def train_func(data_names, device):
                 val_loss = loss_metric.evaluate(model, criterion,loss_used, val_dataloader, device)
                 val_iou_bbox = iou_bbox.evaluate(model,val_dataloader, device,intermediate_loss=intermediate_loss )
                 val_iou_mask = iou_mask.evaluate(model,val_dataloader, device ,intermediate_loss=intermediate_loss)
-                val_dist = distance_via_mean.evaluate(model,val_dataloader,device,intermediate_loss=intermediate_loss)
+                val_dist = distance_via_mean.evaluate(model,val_dataloader,device,intermediate_loss=intermediate_loss, many_times= many_times)
 
                 tracker.add(val_loss,'val_loss')
                 tracker.add(val_iou_bbox,'val_iou_bbox')

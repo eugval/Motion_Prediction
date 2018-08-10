@@ -327,6 +327,9 @@ class DataFromDoubleH5py(Dataset):
         self.number_of_inputs1 = self.f1['number_inputs'].value[0]
         self.timestep1 = self.f1['timestep'].value[0]
 
+        self.number_of_inputs = self.number_of_inputs0
+        self.timestep = self.timestep0
+
         #Train / Test / Val splits
         self.purpose = purpose #train /test /val
         self.idx_sets0 = idx_sets0
@@ -341,8 +344,10 @@ class DataFromDoubleH5py(Dataset):
         self.only_one_mask = only_one_mask
 
         #Data general parameters
+
         self.initial_dims0 = (self.f0['datapoint1']['images'].shape[0], self.f0['datapoint1']['images'].shape[1])
         self.initial_dims1 = (self.f1['datapoint1']['images'].shape[0], self.f1['datapoint1']['images'].shape[1])
+        self.initial_dims = self.initial_dims0
 
         if(hasattr(transform, 'h' ) and hasattr(transform , 'w')):
             self.resized_dims =(transform.h, transform.w)
