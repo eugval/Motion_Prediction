@@ -11,6 +11,7 @@ sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
 import h5py
 from experiments.evaluation_metrics import DistanceViaMean, IoUMetric
+import json
 
 def baselines_to_beat(data_file, savepath = False):
     f = h5py.File(data_file,'r')
@@ -50,9 +51,11 @@ def baselines_to_beat(data_file, savepath = False):
 
 if __name__ == '__main__':
 
-    names = ['Football1and2', 'Football2_1person', 'Crossing1', 'Crossing2']
-    generate = False
+    #names = ['Football1and2', 'Football2_1person', 'Crossing1', 'Crossing2']
+    names = ['Crossing1and2']
+    generate = True
     verify = True
+    save_json = True
     for name in names:
         data_file = os.path.join(PROCESSED_PATH, "{}/{}.hdf5".format(name, name))
         class_filtered_file = os.path.join(PROCESSED_PATH, "{}/{}_cls_filtered.hdf5".format(name, name))
@@ -65,6 +68,7 @@ if __name__ == '__main__':
         input_vis_file =os.path.join(PROCESSED_PATH, "{}/{}_input_vis.png".format(name, name))
         label_vis_file = os.path.join(PROCESSED_PATH, "{}/{}_label_vis.png".format(name, name))
         metrics_to_beat_file =  os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.pickle".format(name, name))
+        metrics_to_beat_file_json =  os.path.join(PROCESSED_PATH, "{}/{}_metrics_to_beat.json".format(name, name))
 
         target_folder = os.path.join(PROCESSED_PATH, "{}/mask_images/".format(name))
         target_folder_consolidated = os.path.join(PROCESSED_PATH, "{}/tracked_images_consolidated/".format(name))
@@ -82,6 +86,9 @@ if __name__ == '__main__':
         if(verify):
             stats = pickle.load(open(metrics_to_beat_file, "rb"))
             print(stats)
+            if(save_json):
+                with open(metrics_to_beat_file_json, 'w') as file:
+                    file.write(json.dumps(stats))
 
 
 

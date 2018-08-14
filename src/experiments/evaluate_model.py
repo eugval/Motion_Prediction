@@ -557,11 +557,12 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    data_names = [('Football1and2', 10 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+    data_names = [('Crossing1', 11 ),('Crossing1_lt', 11 ),('Football1and2', 11 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
         print('dealing with {} {}'.format(data_name, number))
         sys.stdout.flush()
-
 
         evaluate_perf = True
         make_histograms = True
@@ -574,7 +575,7 @@ if __name__=='__main__':
         model = UnetShallow
         #m = model(12)
         #print(m)
-        model_name = "UnetShallow_MI_{}_{}".format(data_name, number)
+        model_name = "UnetShallow_MI_{}_{}_f".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))

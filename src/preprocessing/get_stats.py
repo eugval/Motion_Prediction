@@ -42,13 +42,13 @@ def get_data_stats(data_file, save_path = False):
 
     displacement_stats = {'dist_mean': np.mean(distances),
                           'dis_std': np.std(distances),
-                            'dist': distances,
-                          'iou_mask_mean':np.mean(ious_mask),
-                          'iou_mask_sdt':np.std(ious_mask),
-                          'iou_mask':ious_mask,
-                          'iou_bbox_mean':np.mean(ious_bbox),
-                          'iou_bbox_std':np.std(ious_bbox),
-                          'iou_bbox':ious_bbox,
+                          'dist': distances,
+                          'iou_mask_mean': np.mean(ious_mask),
+                          'iou_mask_sdt': np.std(ious_mask),
+                          'iou_mask': ious_mask,
+                          'iou_bbox_mean': np.mean(ious_bbox),
+                          'iou_bbox_std': np.std(ious_bbox),
+                          'iou_bbox': ious_bbox,
                           }
 
     if(save_path):

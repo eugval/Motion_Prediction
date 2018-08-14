@@ -29,7 +29,7 @@ from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
 from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU, IntermediateLossWrapperForIoUPlusDist
 from deprecated.experiment import main_func
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 debug = False
 
@@ -45,7 +45,7 @@ def train_func(data_names, device):
         SpatialUnet2 with less parameters,
         no mask wrap
          using IoU for early stopping,
-         patience 3, early_stopper factor 0.6
+         patience 5, early_stopper factor 0.6
          new way to dropout
          '''
 

@@ -49,7 +49,8 @@ def train_func(data_names, device):
 
         ###### PARAMETERS #######
         descriptive_text = '''
-        Second run of Unet shallow with adam + iouanddis (same as 7)
+        masks only
+        Second run of Unet shallow with adam + iou
          '''
 
 
@@ -58,12 +59,12 @@ def train_func(data_names, device):
         if(debug):
             model_name = "model_test_1".format(data_name) # For test change here
         else:
-            model_name = "UnetShallow_MI_{}_11_f".format(data_name) # For test change here
+            model_name = "UnetShallow_MI_{}_12_f".format(data_name) # For test change here
 
         only_one_mask = False
-        input_types = ['images', 'masks']
+        input_types = ['masks']
         label_type = 'future_mask'
-        number_of_inputs = 12
+        number_of_inputs = 3
 
         model_inputs = [number_of_inputs]
 
