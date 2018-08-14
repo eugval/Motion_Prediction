@@ -9,8 +9,12 @@
 *.gz
 *.pickle
 *.pkl
+*.json
 
 *.txt
+
+*.pyc
+*.DS_Store
 
 #Compressed data files should not be uploaded
 *.zip
@@ -19,6 +23,7 @@
 __pycache__/
 logs/
 models/*
+data/*
 
 .DS_Store
 Mask_RCNN/
