@@ -30,36 +30,33 @@ print(device)
 
 
 
-data_names = ['Crossing1and2']
-train3.train_func(data_names,device)
+#data_names = ['Crossing1and2']
+#train3.train_func(data_names,device)
 
-data_names = ['Crossing1and2_lt']
-train3.train_func(data_names,device)
-
-
-data_names = ['Football1and2_lt']
-train1.train_func(data_names,device)
-
-data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
-train7.train_func(data_names,device)
+#data_names = ['Crossing1and2_lt']
+#train3.train_func(data_names,device)
 
 
-data_names = ['Crossing1']
-train7.train_func(data_names,device)
+#data_names = ['Football1and2_lt']
+#train1.train_func(data_names,device)
 
 
 
 
 
-data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
-train6.train_func(data_names,device)
-train5.train_func(data_names,device)
+
+
+
+
+data_names = ['Football1and2', 'Crossing1']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
 train4.train_func(data_names,device)
 
 
 
 
-data_names = ['Crossing1']
-train4.train_func(data_names,device)
+#TODO: Maybe
+#data_names = ['Football1and2']  #'Football2_1person' 'Football1and2', 'Crossing1','Crossing2' 'Football1_sm'
+#train7.train_func(data_names,device)
+#train6.train_func(data_names,device)
 
 main_func()

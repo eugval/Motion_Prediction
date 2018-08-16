@@ -53,7 +53,8 @@ def score_and_pos_discard(data_file,target_file,scores,positions =-1, verbose=0)
     f2.create_dataset("class_names", data=f["class_names"])
     f2.create_dataset("tracks_n", data=np.array([0]))
     f2.create_dataset("frame_number", data=f["frame_number"])
-    f2.create_dataset("transition_frame", data = f["transition_frame"])
+    if('transition_frame' in list(f.keys())):
+        f2.create_dataset("transition_frame", data = f["transition_frame"])
 
     for i in frame_indices:
         frame = "frame{}".format(i)
@@ -138,7 +139,9 @@ def class_and_size_discard(data_file,target_file, masks_to_keep = ['car'], small
     f2.create_dataset("class_names", data=f["class_names"])
     f2.create_dataset("tracks_n", data=np.array([0]))
     f2.create_dataset("frame_number", data=f["frame_number"])
-    f2.create_dataset("transition_frame", data = f["transition_frame"])
+
+    if('transition_frame' in list(f.keys())):
+        f2.create_dataset("transition_frame", data = f["transition_frame"])
 
     for i in frame_indices:
         frame = "frame{}".format(i)

@@ -131,15 +131,65 @@ def get_histogram_same_plot(stats, title, save_folder, nomal_x_lim = False):
     plt.close()
 
 
+def get_subfig_historgram(stats, name, save_folder):
+
+    plt.figure(figsize=(16,4))
+    if(name == 'Crossing1'):
+        plt.suptitle('CRS statistics', fontsize=18 )#fontweight='bold'
+    elif(name == 'Crossing1_lt'):
+        plt.suptitle('CRSLT statistics', fontsize=18)
+    elif(name == 'Crossing1and2_lt'):
+        plt.suptitle('LCRSLT statistics', fontsize=18)
+    elif(name == 'Crossing1and2'):
+        plt.suptitle('LCRS statistics', fontsize=18)
+    elif(name== 'Football1and2'):
+        plt.suptitle('FBL statisics', fontsize=18)
+    elif(name== 'Football1and2_lt'):
+        plt.suptitle('FBLLT statistics', fontsize=18)
+
+
+    count = 1
+    for metric_type, stat in stats.items():
+        nomal_x_lim = True
+        if('Dis' in metric_type or 'dis' in metric_type):
+            nomal_x_lim = False
+
+        plt.subplot(1, 3, count)
+        for k, v in stat.items():
+            if(k == 'val'):
+                leg = 'test'
+            else:
+                leg = k
+
+            if(type(v)==list):
+                plt.hist(v, bins=20, range=(min(v),max(v)), alpha=0.3, label='{}'.format(leg))
+
+                if(nomal_x_lim or 'iou' in k or 'mask' in k or 'bbox' in k  ):
+                    plt.xlim(0, 1)
+
+        if(count==1):
+            plt.ylabel('Number of examples')
+
+
+        plt.legend(loc='upper right')
+        plt.title(metric_type)
+        count +=1
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    save_path = os.path.join(save_folder, '{}_all_stats.png'.format(name))
+    plt.savefig(save_path)
+    plt.close()
+
+
 
 
 if __name__ =='__main__'  :
-    data_names = [ 'Football1and2_lt' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
+    data_names = ['Crossing1', 'Crossing1_lt', 'Crossing1and2', 'Crossing1and2_lt','Football1and2', 'Football1and2_lt' ] # 'Football2_1person' 'Football1and2', 'Crossing1','Crossing2'
 
     generate = False
-    plot = False
-    genreate_with_mvnt = True
-    plot_with_mvnt = True
+    plot = True
+    genreate_with_mvnt = False
+    plot_with_mvnt = False
 
     inspect = False
 
@@ -198,9 +248,13 @@ if __name__ =='__main__'  :
             dist = {'train': stats['train']['dist'],
                         'val': stats['val']['dist']}
 
-            get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',save_folder, True)
-            get_histogram_same_plot(iou_mask,'iou_mask_distributions',save_folder, True)
-            get_histogram_same_plot(dist,'centroid_distance_distributions',save_folder)
+
+            all_stats ={'centroid displacement': dist, 'mIoU': iou_mask, 'bbIoU': iou_bbox}
+
+            get_subfig_historgram(all_stats,name,save_folder)
+            #get_histogram_same_plot(iou_bbox,'iou_bbox_distributions',save_folder, True)
+            #get_histogram_same_plot(iou_mask,'iou_mask_distributions',save_folder, True)
+            #get_histogram_same_plot(dist,'centroid_distance_distributions',save_folder)
 
 
 

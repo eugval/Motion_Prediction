@@ -54,7 +54,8 @@ def resize_data(data_file,target_file, height, width, maintain_ratio = True):
     #TODO: change this hardcoding to automatic search
     f2.create_dataset("class_names", data=f["class_names"])
     f2.create_dataset("frame_number", data=f["frame_number"])
-    f2.create_dataset("transition_frame", data = f["transition_frame"])
+    if('transition_frame' in list(f.keys())):
+        f2.create_dataset("transition_frame", data = f["transition_frame"])
     if ('tracks_n' in f):
         f2.create_dataset("tracks_n", data=f['tracks_n'])
 
