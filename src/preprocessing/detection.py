@@ -119,7 +119,8 @@ def run_mask_rcnn(save_name, target_dir, image_dir, model = None, one = False, d
         f = h5py.File(save_path, "w")
         f.create_dataset("class_names", data=[np.string_(j) for j in class_names])
 
-
+    file_names.sort()
+    print(file_names)
     i=0
     for file_name in file_names:
         if (file_name == ".DS_Store"):
@@ -167,13 +168,13 @@ if __name__=="__main__":
 
 
     # The name of the directory to save the processed data
-    target_dir_name = "test_cases/car1_person3"
+    target_dir_name = "test_cases/car3_person3"
 
     #The name of the hdf5 file to save the data
-    save_name = "{}.hdf5".format('car1_person3')
+    save_name = "{}.hdf5".format('car3_person3')
 
     #The name of the directory to fetch the data
-    image_dir_name = "selected_frames/car1_person3"
+    image_dir_name = "selected_frames/car3_person3"
 
     save_dir = generate_save_dir_path(target_dir_name)
 

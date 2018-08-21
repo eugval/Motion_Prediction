@@ -32,19 +32,20 @@ ROOT_DIR = os.path.abspath("../")
 PROCESSED_PATH = os.path.join(ROOT_DIR, "../data/processed/")
 RAW_PATH = os.path.join(ROOT_DIR, "../data/raw/")
 
-names = [ ("test_cases/car1",1,"car1"),("test_cases/car1_person2",1,"car1_person2"),  ("test_cases/car1_person1",1,"car1_person1"), ("test_cases/car1_person3",1,"car1_person3")] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt, Football1_sm
+names = [ ("test_cases/car3_person1",1,"car3_person1"), ("test_cases/car3_person2",1,"car3_person2"),  ("test_cases/car3",1,"car3"),("test_cases/car3_person3",1,"car3_person3")] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt, Football1_sm
+#names = [ ("test_cases/car3",1,"car3")] # Football1and2, Football2_1person , Crossing1, Crossing2, Football1and2_lt, Football1_sm
 detecting = False
 mrg_datasts = False
-discarding = False
-tracking = False
-resizing = False
-calculate_centroids = False
+discarding = True
+tracking = True
+resizing = True
+calculate_centroids = True
 make_gaussians = False # NEVER
 dataset = True
 mk_idx = False          ## NOT BOTH
 mk_idx_merge = False  ## NOT BOTH
 mk_stats = False
-mask_vis = False
+mask_vis = True
 gauss_vis = False
 
 future_time = 10
@@ -109,8 +110,8 @@ for name, config, name2 in names:
         print("Discarding Masks...")
         sys.stdout.flush()
         if(config == 1):
-            class_and_size_discard(data_file,class_filtered_file, masks_to_keep=['car'], small_threshold = 50, global_stats=False)
-            score_and_pos_discard(class_filtered_file, tracked_file, [('car', 0.996)])
+            class_and_size_discard(data_file,class_filtered_file, masks_to_keep=['car'], small_threshold = 50, global_stats=False)#, small_threshold = 50, global_stats=False
+            score_and_pos_discard(class_filtered_file, tracked_file, [('car', 0.95  )])
         elif(config == 2):
             class_and_size_discard(data_file, class_filtered_file,masks_to_keep=['person'] )
             score_and_pos_discard(class_filtered_file, tracked_file, [('person', 0.99)], positions={'y_min': 150})

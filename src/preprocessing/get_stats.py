@@ -118,10 +118,13 @@ def get_histogram(stats, data_name, save_folder, suffix = ''):
 
 
 def get_histogram_same_plot(stats, title, save_folder, nomal_x_lim = False):
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'w']
     plt.figure()
+    color_index = 0
     for k, v in stats.items():
         if(type(v)==list):
-            plt.hist(v, bins=20, range=(min(v),max(v)), alpha=0.3, label='{}'.format(k))
+            plt.hist(v, bins=20, range=(min(v),max(v)), alpha=0.3, label='{}'.format(k), color= colors[color_index])
+            color_index+=1
 
             if(nomal_x_lim or 'iou' in k or 'mask' in k or 'bbox' in k  ):
                 plt.xlim(0, 1)

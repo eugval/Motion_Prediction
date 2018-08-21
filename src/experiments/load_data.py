@@ -612,11 +612,25 @@ class DataFromDoubleH5py(Dataset):
             datapoint_idx = self.idx_sets1[self.purpose][idx - self.len0]
 
 
-        return datapoint_idx, dataset_0
+        return datapoint_idx
+
+    def get_future_time(self, idx):
+        future_time = 10
+
+        if(idx < self.len0):
+            future_time = 5
+
+        return future_time
 
 
 
+    def get_dataset_handle(self,idx):
+        handle = self.f1
 
+        if(idx < self.len0):
+            handle = self.f0
+
+        return handle
 
 
 
@@ -627,7 +641,142 @@ class DataFromDoubleH5py(Dataset):
 
 
 
+#######################  For stress test ############################
 
+class DataFromH5pyForTest(Dataset):
+    def __init__(self, file_path,  purpose, input_type, label_type,  only_one_mask = False, other_sample_entries = ["future_centroid"],transform=None):
+        #Data and data manipulations
+        self.f = h5py.File(file_path, "r")
+        self.transform = transform
+        self.future_time = self.f['future_time'].value[0]
+        self.number_of_inputs = self.f['number_inputs'].value[0]
+        self.timestep = self.f['timestep'].value[0]
+
+        #Train / Test / Val splits
+        self.purpose = purpose #train /test /val
+        self.len = 5
+
+        #Sample parameters
+        self.label_type = label_type
+        self.input_type = input_type
+        self.other_sample_entries = other_sample_entries
+        self.only_one_mask = only_one_mask
+
+        #Data general parameters
+        self.initial_dims = (self.f['datapoint1']['images'].shape[0], self.f['datapoint1']['images'].shape[1])
+
+        if(hasattr(transform, 'h' ) and hasattr(transform , 'w')):
+            self.resized_dims =(transform.h, transform.w)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        datapoint_idx = idx
+
+        frame = "datapoint{}".format(datapoint_idx)
+
+        #TODO: maybe use a different technique than reshaping
+        inputs_images =  []
+        inputs_masks = []
+        for in_type in self.input_type:
+            inp = self.f[frame][in_type].value
+            if(len(inp.shape)==4):
+                for i in range(inp.shape[3]):
+                    inputs_images.append(inp[:,:,:,i])
+            elif(len(inp.shape)==3):
+                #Length 3 inputs are masks, so convert them to integers and max them out
+                if(self.only_one_mask):
+                    inputs_masks.append(inp[:,:,0].astype(int) * 255)
+                else:
+                    inputs_masks.append(inp.astype(int)*255)
+            elif (len(inp.shape) == 2):
+                # Length 2 inputs are bboxes, so convert them to masks
+                for i in range(inp.shape[0]):
+                    bbox_mask = np.zeros(self.initial_dims)
+                    ymin, xmin, ymax, xmax = inp[i,:]
+                    bbox_mask[ymin:ymax,xmin:xmax]=1
+                    inputs_masks.append(bbox_mask)
+                    if (self.only_one_mask):
+                        break
+
+            else:
+                raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+        inputs = inputs_images+inputs_masks
+        inputs = np.dstack(inputs)
+
+        if(self.label_type == 'future_bbox'):
+            label = np.zeros(self.initial_dims)
+            ymin, xmin, ymax, xmax = self.f[frame][self.label_type].value
+            label[ymin:ymax,xmin:xmax]=1
+        else:
+            label = self.f[frame][self.label_type].value
+
+        sample = {'input': inputs.astype(np.float), 'label': label.astype(np.float)}
+
+        for key in self.other_sample_entries:
+            sample[key] = self.f[frame][key].value
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        return sample
+
+    def get_raw(self, idx):
+        datapoint_idx = idx
+
+        frame = "datapoint{}".format(datapoint_idx)
+
+        inputs_images =  []
+        inputs_masks = []
+        for in_type in self.input_type:
+            inp = self.f[frame][in_type].value
+            if(len(inp.shape)==4):
+                for i in range(inp.shape[3]):
+                    inputs_images.append(inp[:,:,:,i])
+            elif(len(inp.shape)==3):
+                #Length 3 inputs are masks, so convert them to integers and max them out
+                if(self.only_one_mask):
+                    inputs_masks.append(inp[:,:,0].astype(int) * 255)
+                else:
+                    for i in range(inp.shape[2]):
+                        inputs_masks.append(inp[:,:,i].astype(int)*255)
+            elif (len(inp.shape) == 2):
+                # Length 2 inputs are bboxes, so convert them to masks
+                for i in range(inp.shape[0]):
+                    bbox_mask = np.zeros(self.initial_dims)
+                    ymin, xmin, ymax, xmax = inp[i,:]
+                    bbox_mask[ymin:ymax,xmin:xmax]=1
+                    inputs_masks.append(bbox_mask)
+                    if (self.only_one_mask):
+                        break
+
+            else:
+                raise ValueError("Inputs can have 2, 3 or 4 dimentions")
+
+
+        inputs = inputs_images+inputs_masks
+
+        if(self.label_type == 'future_bbox'):
+            label = np.zeros(self.initial_dims)
+            ymin, xmin, ymax, xmax = self.f[frame][self.label_type].value
+            label[ymin:ymax,xmin:xmax]=1
+        else:
+            label = self.f[frame][self.label_type].value
+
+        sample = {'input': inputs, 'label': label, 'input_images': inputs_images, 'input_masks': inputs_masks}
+
+        for key in self.other_sample_entries:
+            sample[key] = self.f[frame][key].value
+
+        return sample
+
+    def get_datapoint_index(self,idx):
+        datapoint_idx = idx
+        return datapoint_idx
+
+###################################################################################################
 
 
 

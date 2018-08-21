@@ -63,14 +63,14 @@ def add_test_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_i
 
     #Grab the future frame
     frame_number = i+int(future_time)
-    mask_idx = get_test_idx_from_id(id,f,frame_number)
+    #mask_idx = get_test_idx_from_id(id,f,frame_number)
     use_gaussian = False
     if('gaussians' in f['frame{}'.format(frame_number)]):
         use_gaussian = True
         gaussian_mask = f['frame{}'.format(frame_number)]['gaussians'].value[:,:,mask_idx]
-    future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,mask_idx]
-    future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[mask_idx,:]
-    future_bbox =  f['frame{}'.format(frame_number)]['rois'].value[mask_idx,:]
+    future_mask =  f['frame{}'.format(frame_number)]['masks'].value[:,:,0]
+    future_centroid =  f['frame{}'.format(frame_number)]['centroids'].value[0,:]
+    future_bbox =  f['frame{}'.format(frame_number)]['rois'].value[0,:]
 
     #prepare the data as np arrays for hdf5
     images = np.stack(images, axis=3)
@@ -92,10 +92,10 @@ def add_test_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_i
 
 
 
-def check_test_id_consistency(f,id,frame_idx, timestep, number_inputs, future_time):
-    future_frame = frame_idx + future_time
+def check_test_id_consistency(f,id,frame_idx, timestep, number_inputs, future_frame):
+
     #If the id is not in the future frame return False
-    if (id  not in f['frame{}'.format(future_frame)]['IDs'].value[:, 0]):
+    if (not f['frame{}'.format(future_frame)]['IDs'].value.any()):
         return False
 
     #If the complementary previous times do not have that ID return False
@@ -136,35 +136,16 @@ def make_test_dataset(data_file, target_file, timestep=1, number_inputs=3 , futu
     frame = "frame{}".format(i)
 
 
-    id_list = []
-    for id, id_2 in f[frame]['IDs']:
 
+    for id, id_2 in f[frame]['IDs']:
+        id_list = []
 
         #Check that the future frame exists
         future_frame = i + future_time
-        
-
-        #Add the ids of that frame that have previous and future frames with the same id
-        if (check_test_id_consistency(f,id,i,timestep,number_inputs,future_time)):
-            id_list.append(id)
-
-    #Add the datapoint
-    if(len(id_list)>0):
-        if(merged_data):
-            if(i>= transition_frame and not recorded_transition_datapoint):
-                f2.create_dataset("transition_datapoint", data = [datapoint_index])
-                recorded_transition_datapoint = True
-
-        for id in id_list:
-            add_test_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
-            datapoint_index+=1
-    else:
-
-        future_frame = i + future_time+1
 
 
         #Add the ids of that frame that have previous and future frames with the same id
-        if (check_test_id_consistency(f,id,i,timestep,number_inputs,future_time)):
+        if (check_test_id_consistency(f,id,i,timestep,number_inputs,future_frame)):
             id_list.append(id)
 
         #Add the datapoint
@@ -177,6 +158,25 @@ def make_test_dataset(data_file, target_file, timestep=1, number_inputs=3 , futu
             for id in id_list:
                 add_test_datapoint(f,f2,id,i,timestep,number_inputs,future_time, datapoint_index)
                 datapoint_index+=1
+        else:
+
+            future_frame = i + future_time+1
+
+
+            #Add the ids of that frame that have previous and future frames with the same id
+            if (check_test_id_consistency(f,id,i,timestep,number_inputs,future_frame)):
+                id_list.append(id)
+
+            #Add the datapoint
+            if(len(id_list)>0):
+                if(merged_data):
+                    if(i>= transition_frame and not recorded_transition_datapoint):
+                        f2.create_dataset("transition_datapoint", data = [datapoint_index])
+                        recorded_transition_datapoint = True
+
+                for id in id_list:
+                    add_test_datapoint(f,f2,id,i,timestep,number_inputs,future_time+1, datapoint_index)
+                    datapoint_index+=1
 
 
 

@@ -7,12 +7,13 @@ sys.path.append(ROOT_DIR)
 sys.path.append(os.path.join(ROOT_DIR,"experiments"))
 sys.path.append(os.path.join(ROOT_DIR,"preprocessing"))
 sys.path.append(os.path.join(ROOT_DIR,"deprecated"))
+
 import matplotlib
 matplotlib.use('Agg')
 import pickle
 import torch
 from experiments.training_tracker import TrainingTracker
-from experiments.load_data import DataFromH5py, ResizeSample , ToTensor
+from experiments.load_data import DataFromH5py, ResizeSample, ToTensor,DataFromH5pyForTest,DataFromDoubleH5py
 from experiments.evaluation_metrics import IoUMetric, DistanceViaMean
 from torchvision import transforms
 import cv2
@@ -25,6 +26,7 @@ import json
 import colorsys
 import random
 import h5py
+import copy
 
 
 #TODO : Make sure I can cope with  only masks
@@ -35,7 +37,7 @@ import h5py
 
 
 class ModelEvaluator(object):
-    def __init__(self, model,  param_file, reload_tracker = True, cpu_only = False):
+    def __init__(self, model,  param_file, reload_tracker = True, cpu_only = False, direct_params = False):
         if(cpu_only):
             self.device = 'cpu'
             self.device_string = 'cpu'
@@ -43,7 +45,15 @@ class ModelEvaluator(object):
             self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             self.device_string = "cuda:0"
 
-        self.params = pickle.load(open(param_file, "rb"))
+        if(not direct_params):
+            self.params = pickle.load(open(param_file, "rb"))
+        else:
+            self.params = params
+
+        if ('many_times' in self.params.keys()):
+            self.many_times = self.params['many_times']
+        else:
+            self.many_times = False
 
         self.training_tracker = pickle.load(open(self.params['model_history_file'], "rb"))
         if(reload_tracker):
@@ -72,7 +82,13 @@ class ModelEvaluator(object):
         self.model.to(self.device)
         self.model.eval()
 
-        self.dataset_file = self.params['dataset_file']
+        if(self.many_times):
+            self.dataset_file0 = self.params['dataset_file0']
+            self.dataset_file1 = self.params['dataset_file1']
+            self.idx_set0 =  pickle.load(open(self.params['idx_sets_file0'], "rb"))
+            self.idx_set1 =  pickle.load(open(self.params['idx_sets_file1'], "rb"))
+        else:
+            self.dataset_file = self.params['dataset_file']
 
         self.performance_statistics = {}
         self.performance_arrays = {}
@@ -81,12 +97,19 @@ class ModelEvaluator(object):
 
 
     def get_performace_stats(self, set):
-        dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
-                                    purpose = set, label_type = self.params['label_type'], only_one_mask=self.params['only_one_mask'],
-                                    transform = transforms.Compose([
-                                        ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
-                                        ToTensor()
-                                    ]))
+        if(self.many_times):
+            dataset = DataFromDoubleH5py(self.dataset_file0, self.dataset_file1, self.idx_set0, self.idx_set1,purpose=set, input_type= self.params['input_types'], label_type=self.params['label_type'],
+                                   only_one_mask=self.params['only_one_mask'], transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
+        else:
+            dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
+                                        purpose = set, label_type = self.params['label_type'], only_one_mask=self.params['only_one_mask'],
+                                        transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
 
 
         iou_bbox = IoUMetric(type = 'bbox')
@@ -258,12 +281,19 @@ class ModelEvaluator(object):
 
     def plot_qualitative_vis(self, trials, set, verbose = 1):
 
-        dataset = DataFromH5py(self.dataset_file, self.params['idx_sets'], input_type=self.params['input_types'],
-                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
-                               transform=transforms.Compose([
-                                   ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
-                                   ToTensor()
-                               ]))
+        if(self.many_times):
+            dataset = DataFromDoubleH5py(self.dataset_file0, self.dataset_file1, self.idx_set0, self.idx_set1,purpose=set, input_type= self.params['input_types'], label_type=self.params['label_type'],
+                                   only_one_mask=self.params['only_one_mask'], transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
+        else:
+            dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
+                                        purpose = set, label_type = self.params['label_type'], only_one_mask=self.params['only_one_mask'],
+                                        transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
 
         distance_via_mean = DistanceViaMean()
 
@@ -305,12 +335,18 @@ class ModelEvaluator(object):
 
             plt.subplot2grid((4, 3), (0, 2))
             plt.imshow(label_raw)
-            plt.title("Raw label at time t + {}".format(dataset.future_time))
+            if(self.many_times):
+                plt.title("Raw label at time t + {}".format(dataset.get_future_time(idx)))
+            else:
+                plt.title("Raw label at time t + {}".format(dataset.future_time))
             plt.scatter(*zip(centroid_list[0]), marker='+')
 
             plt.subplot2grid((4, 3), (1, 0))
             plt.imshow(resized_label)
-            plt.title("Resized label at time t + {}".format(dataset.future_time))
+            if(self.many_times):
+                plt.title("Resized label at time t + {}".format(dataset.get_future_time(idx)))
+            else:
+                plt.title("Resized label at time t + {}".format(dataset.future_time))
 
             plt.subplot2grid((4, 3), (1, 1))
             plt.imshow(output)
@@ -350,18 +386,27 @@ class ModelEvaluator(object):
 
 
     def plot_qualitative_vis_2(self, trials, set, verbose = 1):
-        dataset = DataFromH5py(self.dataset_file, self.params['idx_sets'], input_type=self.params['input_types'],
-                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
-                               transform=transforms.Compose([
-                                   ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
-                                   ToTensor()
-                               ]))
+        if(self.many_times):
+            dataset = DataFromDoubleH5py(self.dataset_file0, self.dataset_file1, self.idx_set0, self.idx_set1,purpose=set, input_type= self.params['input_types'], label_type=self.params['label_type'],
+                                   only_one_mask=self.params['only_one_mask'], transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
+        else:
+            dataset = DataFromH5py(self.dataset_file,self.params['idx_sets'],input_type = self.params['input_types'],
+                                        purpose = set, label_type = self.params['label_type'], only_one_mask=self.params['only_one_mask'],
+                                        transform = transforms.Compose([
+                                            ResizeSample(height= self.params['resize_height'], width = self.params['resize_width']),
+                                            ToTensor()
+                                        ]))
+
         for trial in range(trials):
             if (verbose > 0): print("Prediction visualisation {} for {} set of {}".format(trial,set,self.params['model_name'] ))
             save_path = os.path.join(self.save_folder, "Qualitative_prediction_{}_on_{}_set.png".format(trial,set))
 
             corresponding_points = []
             dataset_indices = []
+            which_dataset = []
 
             while len(corresponding_points) < 2:
                 corresponding_points = []
@@ -369,21 +414,39 @@ class ModelEvaluator(object):
                 idx = np.random.randint(len(dataset))
                 datapoint_idx = dataset.get_datapoint_index(idx)
 
+                if(self.many_times):
+                    handle = dataset.get_dataset_handle(idx)
+
                 dataset_indices.append(idx)
                 corresponding_points.append(datapoint_idx)
 
                 datapoint_key = 'datapoint{}'.format(datapoint_idx)
-                frame_idx_reference = dataset.f[datapoint_key]['origin_frame'].value[0]
+
+                if(self.many_times):
+                    frame_idx_reference= handle[datapoint_key]['origin_frame'].value[0]
+                else:
+                    frame_idx_reference = dataset.f[datapoint_key]['origin_frame'].value[0]
 
                 for i in range(len(dataset)):
                     datapoint_idx = dataset.get_datapoint_index(i)
                     if(datapoint_idx in corresponding_points):
                         continue
+
+                    if(self.many_times):
+                        handle = dataset.get_dataset_handle(i)
+
                     datapoint_key = 'datapoint{}'.format(datapoint_idx)
 
-                    if(dataset.f[datapoint_key]['origin_frame'].value[0] == frame_idx_reference):
-                        dataset_indices.append(i)
-                        corresponding_points.append(datapoint_idx)
+                    if(self.many_times):
+                        if(handle[datapoint_key]['origin_frame'].value[0] == frame_idx_reference):
+                            dataset_indices.append(i)
+                            corresponding_points.append(datapoint_idx)
+                            which_dataset.append(handle)
+
+                    else:
+                        if(dataset.f[datapoint_key]['origin_frame'].value[0] == frame_idx_reference):
+                            dataset_indices.append(i)
+                            corresponding_points.append(datapoint_idx)
 
 
             output_masks = []
@@ -396,8 +459,10 @@ class ModelEvaluator(object):
 
                 output_masks.append(output_after_thresh)
 
-
-            image = dataset.f['datapoint{}'.format(corresponding_points[0])]['images'].value[:,:,:,0]
+            if(self.many_times):
+                image= which_dataset[0]['datapoint{}'.format(corresponding_points[0])]['images'].value[:,:,:,0]
+            else:
+                image = dataset.f['datapoint{}'.format(corresponding_points[0])]['images'].value[:,:,:,0]
 
             colors = self.__random_colors__(len(output_masks))
 
@@ -477,8 +542,38 @@ class ModelEvaluator(object):
         if(verbose>0): print("Done")
 
 
+    def run_test(self, file, test_name,idx, verbose =1):
+        dataset = DataFromH5pyForTest(file,  input_type=self.params['input_types'],
+                               purpose=set, label_type='future_mask',only_one_mask=self.params['only_one_mask'],
+                               transform=transforms.Compose([
+                                   ResizeSample(height=self.params['resize_height'], width=self.params['resize_width']),
+                                   ToTensor()
+                               ]))
 
 
+        save_path = os.path.join(self.save_folder, "stress_test_{}.png".format(test_name))
+        sample = dataset[idx]
+        raw_sample = dataset.get_raw(idx)
+
+        output, output_initial_dims, output_after_thresh, label_raw, future_centroid = self.__perform_inference__(sample,raw_sample, dataset.initial_dims)
+
+
+        image = dataset.f['datapoint{}'.format(idx)]['images'].value[:,:,:,0]
+
+        colors = self.__random_colors__(1)
+
+
+        mask = output_after_thresh
+        color = colors[0]
+        image = self.__apply_mask__(image,mask,color)
+
+        plt.figure(figsize=(15, 15))
+        plt.imshow(image)
+
+        plt.tight_layout()
+        plt.savefig(save_path)
+        plt.close()
+        if(verbose>0): print("Done")
 
 
     def __random_colors__(self,N, bright=True):
@@ -557,9 +652,9 @@ class ModelEvaluator(object):
 
 
 if __name__=='__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-    data_names = [('Crossing1', 11 ),('Crossing1_lt', 11 ),('Football1and2', 11 )]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
+    data_names = [('Crossing1',3)]# ('Crossing1', 1),('Football2_1person',1) ('Football1and2', 2)
     for data_name, number in data_names:
         print('dealing with {} {}'.format(data_name, number))
         sys.stdout.flush()
@@ -568,14 +663,18 @@ if __name__=='__main__':
         make_histograms = True
         make_training_plots = True
         make_qual_plots = True
-        make_qual_plots_2 = True
-        vid_pred = False
+        make_qual_plots_2 = False
+        vid_pred = True
+        stress_test = False
 
 
-        model = UnetShallow
+
+        different_file_system = False
+        cpu_only  = False
+        model = SpatialUnet2
         #m = model(12)
         #print(m)
-        model_name = "UnetShallow_MI_{}_{}_f".format(data_name, number)
+        model_name = "SpatialUnet2_MI_{}_{}".format(data_name, number)
 
 
         param_file = os.path.join(MODEL_PATH, "{}/param_holder.pickle".format(model_name))
@@ -596,6 +695,7 @@ if __name__=='__main__':
         if('model_history_file' not in params):
             params['model_history_file'] = os.path.join(MODEL_PATH, "{}/{}_history.pickle".format(model_name, model_name))
 
+
         if ('model_folder' not in params):
             params['model_folder'] =  os.path.join(MODEL_PATH, "{}/".format(model_name))
 
@@ -615,7 +715,15 @@ if __name__=='__main__':
         ###################################
 
 
-        evaluator = ModelEvaluator(model, param_file, cpu_only = False)
+        if(different_file_system):
+            params2 = copy.deepcopy(params)
+            for k, v in params2.items():
+                if('file' in k or 'folder' in k):
+                    params[k] = '/home/msc_eugene/mount_dir/'+ v
+            print(params)
+            evaluator = ModelEvaluator(model, params, cpu_only = cpu_only, direct_params = different_file_system)
+        else:
+            evaluator = ModelEvaluator(model, param_file, cpu_only = cpu_only)
 
         print(evaluator.device)
 
@@ -648,14 +756,23 @@ if __name__=='__main__':
             evaluator.plot_qualitative_vis(10, 'val')
 
         if(make_qual_plots_2):
-            print('Making Qualitative Plots')
+            print('Making Qualitative Plots 2')
             sys.stdout.flush()
             #evaluator.plot_qualitative_vis(5,'train')
-            evaluator.plot_qualitative_vis_2(5, 'val')
+            evaluator.plot_qualitative_vis_2(10, 'val')
 
         if(vid_pred):
             evaluator.full_video_prediction('val')
 
+        if(stress_test):
+            #names = [  ("test_cases/car2/car2_dataset.hdf5",1,'car2'), ("test_cases/car2_person1/car2_person1_dataset.hdf5",0,'car2_person1'), ("test_cases/car2_person2/car2_person2_dataset.hdf5",0,'car2_person2'),  ("test_cases/car2_person3/car2_person3_dataset.hdf5",1,'car2_person3')]
+            names = [  ("test_cases/car1/car1_dataset.hdf5",1,'car1'), ("test_cases/car1_person1/car1_person1_dataset.hdf5",0,'car1_person1'), ("test_cases/car1_person2/car1_person2_dataset.hdf5",0,'car1_person2'),  ("test_cases/car1_person3/car1_person3_dataset.hdf5",1,'car1_person3'),
+                       ("test_cases/car2/car2_dataset.hdf5",1,'car2'), ("test_cases/car2_person1/car2_person1_dataset.hdf5",0,'car2_person1'), ("test_cases/car2_person2/car2_person2_dataset.hdf5",0,'car2_person2'),  ("test_cases/car2_person3/car2_person3_dataset.hdf5",1,'car2_person3'),
+                       ("test_cases/car3/car3_dataset.hdf5",0,'car3'), ("test_cases/car3_person2/car3_person2_dataset.hdf5",0,'car3_person2')]
+            for file_sfx, idx, name in names:
+                file = os.path.join(PROCESSED_PATH,file_sfx)
+
+                evaluator.run_test( file, name,idx, verbose =1)
         print('FINISHED')
 
 #main_func()
