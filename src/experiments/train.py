@@ -27,7 +27,7 @@ from experiments.training_tracker import  TrainingTracker
 from experiments.load_data import DataFromH5py, ResizeSample , ToTensor, RandomCropWithAspectRatio, RandomHorizontalFlip, RandomNoise, RandomRotation
 from experiments.early_stopper import EarlyStopper, SmoothedEarlyStopper
 from experiments.custom_losses import IoULoss, DistanceLoss, DistancePlusIoU, IntermediateLossWrapperForIoUPlusDist
-from deprecated.experiment import main_func
+
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
@@ -446,4 +446,3 @@ if __name__=='__main__':
 
     train_func(data_names, device)
 
-    main_func()
