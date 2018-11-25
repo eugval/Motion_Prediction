@@ -8,8 +8,8 @@ We develop models and create datasets that are fit to the challenge, and investi
 ### Citation
 For this work, please provide the following citation:
 
-@misc{FutureObjectValassakis2018, 
-author={Valassakis, Pierre Eugene and Omran, Mohamed and Brostow, Gabriel},
-title = {Future Object Segmentation for Complex Correlated Motions},
+@misc{FutureObjectValassakis2018, \
+author={Valassakis, Pierre Eugene and Omran, Mohamed and Brostow, Gabriel},\
+title = {Future Object Segmentation for Complex Correlated Motions},\
 howpublished={https://github.com/eugval/Motion_Prediction}
 }
